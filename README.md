@@ -9,10 +9,13 @@ It is a Chrome/browser extension that lets you save reusable prompts, trigger th
 PromptDeck is designed to stay out of the way while making your best prompts instantly available across AI tools.
 
 <div align="center">
-  <video src="public/promptdeck.mov" controls width="100%" muted>
+  <video src="https://github.com/user-attachments/assets/f2f0d833-297b-497a-a983-c37cc8d44055" controls width="100%" muted>
     Your browser does not support embedded video.
   </video>
 </div>
+
+
+
 
 ---
 
