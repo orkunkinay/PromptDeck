@@ -1,0 +1,53 @@
+{
+  "name": "promptdeck",
+  "version": "0.1.0",
+  "description": "Local-first prompt command center for reusable AI prompts across browser text fields.",
+  "type": "module",
+  "license": "MIT",
+  "author": "Orkun Kınay & Murat Barkın Kınay",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/orkunkinay/promptdeck.git"
+  },
+  "keywords": [
+    "chrome-extension",
+    "prompt-manager",
+    "ai-tools",
+    "local-first",
+    "browser-extension",
+    "productivity"
+  ],
+  "scripts": {
+    "dev": "vite --host 127.0.0.1",
+    "build": "tsc --noEmit && vite build && vite build --config vite.content.config.ts",
+    "build:debug": "tsc --noEmit && vite build --mode development && vite build --mode development --config vite.content.config.ts",
+    "package:chrome": "npm run build && node scripts/package-chrome.mjs",
+    "lint": "npm run typecheck",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "preview": "vite preview --host 127.0.0.1",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@vitejs/plugin-react": "^4.2.1",
+    "dexie": "^4.0.8",
+    "lucide-react": "^0.468.0",
+    "react": "^18.2.0",
+    "react-dom": "^18.2.0",
+    "zustand": "^4.5.2"
+  },
+  "devDependencies": {
+    "@types/chrome": "^0.0.268",
+    "@types/react": "^18.2.66",
+    "@types/react-dom": "^18.2.22",
+    "@vitejs/plugin-react-swc": "^3.6.0",
+    "autoprefixer": "^10.4.19",
+    "jsdom": "^24.0.0",
+    "postcss": "^8.4.38",
+    "tailwindcss": "^3.4.3",
+    "typescript": "^5.4.5",
+    "vite": "^5.2.11",
+    "vite-plugin-static-copy": "^1.0.6",
+    "vitest": "^1.5.2"
+  }
+}
