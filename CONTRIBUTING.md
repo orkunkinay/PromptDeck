@@ -5,8 +5,7 @@ Thanks for considering a contribution. PromptDeck is early, local-first browser 
 ## Setup
 
 ```bash
-git clone <repository-url>
-cd PromptDeck
+git clone https://github.com/orkunkinay/PromptDeck.git
 npm install
 ```
 
