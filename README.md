@@ -42,6 +42,11 @@ Type your trigger, search your prompt library, and insert the selected prompt di
 
 Create, organize, version, and back up reusable prompts from a focused dashboard built for serious prompt workflows.
 
+Open the PromptDeck manager anytime with the keyboard shortcut:
+
+- **Windows/Linux:** `Ctrl + K`
+- **macOS:** `Command + K`
+
 <p align="center">
   <img
     src="public/manager_ui.png"
