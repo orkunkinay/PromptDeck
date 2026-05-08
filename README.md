@@ -1,5 +1,10 @@
 # PromptDeck
 
+[![Install from Chrome Web Store](https://img.shields.io/badge/Chrome%20Web%20Store-Install-blue?logo=googlechrome&logoColor=white)](https://chromewebstore.google.com/detail/promptdeck/ibhheacppbbekiihiabfmplinfopcind)
+[![Version](https://img.shields.io/github/package-json/v/orkunkinay/promptdeck?label=version)](https://github.com/orkunkinay/promptdeck)
+[![License](https://img.shields.io/github/license/orkunkinay/promptdeck)](LICENSE)
+
+
 PromptDeck is a local-first prompt command center for people who reuse serious prompts across AI tools.
 
 It is a Chrome/browser extension that lets you save reusable prompts, trigger them with `;;`, search them through a compact autocomplete helper, manage versions and variants, and import/export local backups. PromptDeck is early, but it is built around a durable product principle: prompt content should stay under the user's control.
