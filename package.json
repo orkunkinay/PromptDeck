@@ -38,6 +38,7 @@
   },
   "devDependencies": {
     "@types/chrome": "^0.0.268",
+    "@types/node": "^20.19.40",
     "@types/react": "^18.2.66",
     "@types/react-dom": "^18.2.22",
     "@vitejs/plugin-react-swc": "^3.6.0",
