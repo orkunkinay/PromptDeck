@@ -12,3 +12,4 @@ test-results/
 *.tsbuildinfo
 promptdeck-chrome-extension.zip
 STORE_SUBMISSION.md
+RELEASE_CHECKLIST.md
