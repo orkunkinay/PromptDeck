@@ -14,6 +14,14 @@ This roadmap is directional. It does not imply dates or commitments.
 - Add lightweight site adapters only when generic behavior is insufficient.
 - Expand manual QA coverage for ChatGPT, Claude, Gemini, Perplexity, Poe, Open WebUI, Notion, Google Docs, Slack, Gmail, and generic text fields.
 
+## System-Wide Prompt Access
+
+- Explore a companion terminal CLI for searching, printing, and copying prompts from the command line.
+- Explore desktop-wide prompt access for native LLM applications such as ChatGPT Desktop, Claude Desktop, and other local AI tools.
+- Explore integrations for developer environments, including VS Code, coding-agent extensions, and editor command palettes.
+- Keep browser extension usage fully supported while designing shared import/export or storage formats that could power non-browser clients.
+- Avoid adding account, backend, telemetry, or cloud requirements for system-wide usage.
+
 ## Prompt Library Management
 
 - Improve version and variant workflows.
