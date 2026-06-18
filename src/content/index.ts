@@ -1,12 +1,9 @@
-import type { RuntimeMessage } from "../shared/models/messages";
 import type { Prompt, PromptDeckSettings } from "../shared/models/prompt";
-import { ensureVariableDefinitions } from "../shared/promptCompiler/compiler";
 import { sendRuntimeMessage } from "../shared/runtime/sendMessage";
 import { searchPrompts, type SearchResult } from "../shared/search/fuzzySearch";
 import { SETTINGS_KEY } from "../shared/settings/settingsService";
 import { defaultSettings } from "../shared/settings/defaultSettings";
 import { PROMPTDECK_STATE_KEY } from "../shared/state/stateInvalidation";
-import { nowIso, titleFromCommand } from "../shared/utils/id";
 import { resolvePromptContent } from "../shared/versioning/versionService";
 import { canRunPromptDeck, getCurrentHost, isHostDisabled } from "./adapters/siteAdapter";
 import { parseCommandAt, type ParsedCommand } from "./commandDetection/commandParser";
@@ -15,7 +12,9 @@ import { insertOrCopy } from "./insertion/insertionService";
 import { consumePromptDeckKeyboardEvent, isPromptDeckOwnedKey } from "./keyboard/keyboardOwnership";
 
 const PALETTE_CSS = `
-.pd-root{position:fixed;z-index:999999;width:max-content;max-width:min(520px,calc(100vw - 24px));font-family:Inter,ui-sans-serif,system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;font-size:13px;letter-spacing:0;color:#111827}
+:host{all:initial;display:block;width:0;height:0;margin:0;padding:0;border:0;background:transparent;color:initial;font:initial;contain:layout style}
+.pd-root,.pd-root *{box-sizing:border-box}
+.pd-root{all:initial;position:fixed;z-index:2147483647;width:max-content;max-width:min(520px,calc(100vw - 24px));font-family:Inter,ui-sans-serif,system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;font-size:13px;letter-spacing:0;color:#111827}
 .pd-pill{display:flex;align-items:center;gap:8px;max-width:min(520px,calc(100vw - 24px));border:1px solid rgba(148,163,184,.55);border-radius:999px;background:#fff;padding:6px 8px;box-shadow:0 12px 36px rgba(15,23,42,.22)}
 .pd-pill-main{display:flex;align-items:center;gap:7px;min-width:0;border:0;background:transparent;color:inherit;cursor:pointer;padding:0;text-align:left}.pd-icon{display:grid;place-items:center;width:22px;height:22px;border-radius:999px;background:#eff6ff}.pd-title{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:220px;font-weight:600}.pd-hint,.pd-count{white-space:nowrap;color:#64748b;font-size:11px}.pd-gear{display:grid;place-items:center;width:24px;height:24px;border:0;border-radius:999px;background:transparent;color:#64748b;cursor:pointer}.pd-gear:hover,.pd-pill-main:hover{background:rgba(148,163,184,.12)}
 .pd-ask{display:flex;align-items:center;gap:6px;white-space:nowrap}.pd-ask button{border:1px solid rgba(148,163,184,.55);border-radius:999px;background:transparent;color:inherit;padding:4px 9px;font:inherit;font-size:11px;font-weight:650;line-height:1;cursor:pointer}.pd-ask button:hover{background:rgba(148,163,184,.14)}
@@ -37,35 +36,25 @@ interface State {
   askPending: boolean;
 }
 
-function text(value: string): Text {
-  return document.createTextNode(value);
+interface PaletteDom {
+  root: HTMLDivElement;
+  title: HTMLSpanElement;
+  hint: HTMLSpanElement;
+  ask: HTMLSpanElement;
+  count: HTMLSpanElement;
+  menu: HTMLDivElement;
+  options: HTMLButtonElement[];
 }
 
-function createPromptFromCommandLocal(command: string, content: string, title?: string): Prompt {
-  const now = nowIso();
-  const normalizedCommand = command.startsWith("/") ? command : `/${command}`;
-  const id = normalizedCommand.replace(/^\//, "").toLowerCase();
-  return {
-    id,
-    title: title?.trim() || titleFromCommand(normalizedCommand),
-    command: normalizedCommand,
-    aliases: [],
-    tags: [],
-    description: "",
-    body: content,
-    defaultVersionId: "v1",
-    versions: [{ id: "v1", promptId: id, label: "Original", content, changelog: "Created prompt", createdAt: now, createdBy: "local user", isDefault: true }],
-    variants: [],
-    variables: ensureVariableDefinitions(content),
-    createdAt: now,
-    updatedAt: now,
-    usageCount: 0
-  };
-}
+const MAX_DROPDOWN_OPTIONS = 5;
 
-class PaletteController {
+export class PaletteController {
   private host: HTMLDivElement;
+  private shadow: ShadowRoot;
+  private dom: PaletteDom;
   private prompts: Prompt[] = [];
+  private promptsLoaded = false;
+  private refreshPromise: Promise<void> | null = null;
   private settings: PromptDeckSettings = defaultSettings;
   private activeEditable: EditableElement | null = null;
   private refreshTimer: number | undefined;
@@ -74,9 +63,23 @@ class PaletteController {
   constructor() {
     this.host = document.createElement("div");
     this.host.id = "promptdeck-root";
+    this.host.style.all = "initial";
+    this.host.style.display = "block";
+    this.host.style.width = "0";
+    this.host.style.height = "0";
+    this.host.style.margin = "0";
+    this.host.style.padding = "0";
+    this.host.style.border = "0";
+    this.host.style.background = "transparent";
+    this.host.style.color = "initial";
+    this.host.style.font = "initial";
+    this.host.style.contain = "layout style";
+    this.shadow = this.host.attachShadow({ mode: "open" });
     const style = document.createElement("style");
     style.textContent = PALETTE_CSS;
-    this.host.append(style);
+    this.shadow.append(style);
+    this.dom = this.createPaletteDom();
+    this.shadow.append(this.dom.root);
     (document.body || document.documentElement).append(this.host);
   }
 
@@ -85,28 +88,51 @@ class PaletteController {
     document.addEventListener("input", this.onInput, true);
     document.addEventListener("keyup", this.onKeyup, true);
     document.addEventListener("keydown", this.onKeydown, true);
-    document.addEventListener("focusin", () => void this.refreshData(), true);
     document.addEventListener("focusout", this.onFocusOut, true);
     document.addEventListener("mousedown", this.onMouseDown, true);
     if (typeof chrome !== "undefined") {
       chrome.storage?.onChanged?.addListener?.(this.onStorageChanged);
-      chrome.runtime?.onMessage?.addListener?.(this.onRuntimeMessage);
     }
   }
 
+  stop(): void {
+    document.removeEventListener("input", this.onInput, true);
+    document.removeEventListener("keyup", this.onKeyup, true);
+    document.removeEventListener("keydown", this.onKeydown, true);
+    document.removeEventListener("focusout", this.onFocusOut, true);
+    document.removeEventListener("mousedown", this.onMouseDown, true);
+    if (this.refreshTimer !== undefined) {
+      window.clearTimeout(this.refreshTimer);
+      this.refreshTimer = undefined;
+    }
+    if (typeof chrome !== "undefined") {
+      chrome.storage?.onChanged?.removeListener?.(this.onStorageChanged);
+    }
+    this.host.remove();
+  }
+
   private async refreshData(): Promise<void> {
+    if (this.refreshPromise) return this.refreshPromise;
+    this.refreshPromise = this.loadData();
+    await this.refreshPromise;
+  }
+
+  private async loadData(): Promise<void> {
     try {
       const [prompts, settings] = await Promise.all([
         sendRuntimeMessage<Prompt[]>({ type: "PROMPTS_LIST" }),
         sendRuntimeMessage<PromptDeckSettings>({ type: "SETTINGS_GET" })
       ]);
       this.prompts = prompts;
+      this.promptsLoaded = true;
       this.settings = settings;
       this.refreshOpenState();
     } catch (error) {
       this.settings = defaultSettings;
       const message = error instanceof Error ? error.message : "Could not load PromptDeck.";
       this.setState({ error: message });
+    } finally {
+      this.refreshPromise = null;
     }
   }
 
@@ -123,10 +149,6 @@ class PaletteController {
     if (SETTINGS_KEY in changes || PROMPTDECK_STATE_KEY in changes) {
       this.scheduleRefresh();
     }
-  };
-
-  private onRuntimeMessage = (message: RuntimeMessage): void => {
-    if (message.type === "PROMPTDECK_STATE_CHANGED") this.scheduleRefresh();
   };
 
   private refreshOpenState(): void {
@@ -214,6 +236,7 @@ class PaletteController {
       return;
     }
     this.activeEditable = editable;
+    if (!this.promptsLoaded) void this.refreshData();
     this.setState({
       open: true,
       command,
@@ -263,13 +286,6 @@ class PaletteController {
     this.setState({ message: result.message, open: true, askPending: false });
   }
 
-  private async createPrompt(command: string, title: string, content: string): Promise<void> {
-    const prompt = createPromptFromCommandLocal(command, content, title);
-    const saved = await sendRuntimeMessage<Prompt>({ type: "PROMPTS_SAVE", prompt } satisfies RuntimeMessage);
-    this.prompts = [saved, ...this.prompts];
-    this.setState({ results: searchPrompts(this.prompts, command), selectedIndex: 0, message: "Prompt created" });
-  }
-
   private dismiss(): void {
     this.activeEditable = null;
     this.setState({ open: false, command: null, results: [], selectedIndex: 0, expanded: false, askPending: false, message: undefined, error: undefined });
@@ -280,28 +296,21 @@ class PaletteController {
     this.render();
   }
 
-  private render(): void {
-    this.host.querySelector(".pd-root")?.remove();
-    if (!this.state.open) return;
+  private createPaletteDom(): PaletteDom {
     const root = document.createElement("div");
     root.className = "pd-root";
     root.setAttribute("role", "dialog");
     root.setAttribute("aria-label", "PromptDeck autocomplete");
-    root.style.top = `${Math.max(12, (this.state.rect?.top || 80) - (this.state.expanded ? 250 : 48))}px`;
-    root.style.left = `${Math.max(12, Math.min(window.innerWidth - 520, this.state.rect?.left || 20))}px`;
-    root.append(this.renderAutocomplete());
-    this.host.append(root);
-  }
+    root.hidden = true;
 
-  private renderAutocomplete(): HTMLElement {
     const wrap = document.createElement("div");
     const pill = document.createElement("div");
     pill.className = "pd-pill";
 
-    const selected = this.state.results[this.state.selectedIndex]?.prompt;
     const main = document.createElement("button");
     main.type = "button";
     main.className = "pd-pill-main";
+    main.onmousedown = (event) => event.preventDefault();
     main.onclick = () => this.setState({ expanded: !this.state.expanded });
 
     const icon = document.createElement("span");
@@ -310,51 +319,43 @@ class PaletteController {
 
     const title = document.createElement("span");
     title.className = "pd-title";
-    title.textContent = selected?.title || (this.state.command?.raw ? "No matching prompt" : `Type ${this.settings.trigger}`);
 
     main.append(icon, title);
 
-    const insertHint = this.state.askPending ? this.renderAskControls() : document.createElement("span");
-    if (!this.state.askPending) {
-      insertHint.className = "pd-hint";
-      insertHint.textContent =
-        this.settings.insertionMode === "ask"
-          ? "Enter choose"
-          : this.settings.insertionMode === "clipboard"
-            ? "Enter copy"
-            : "Enter insert";
-    }
+    const hint = document.createElement("span");
+    hint.className = "pd-hint";
+
+    const ask = this.createAskControls();
 
     const count = document.createElement("span");
     count.className = "pd-count";
-    count.textContent =
-      this.state.results.length > 1
-        ? `${this.state.selectedIndex + 1}/${this.state.results.length} Up/Down`
-        : this.state.results.length === 1
-          ? "1/1"
-          : "0/0";
 
     const gear = document.createElement("button");
     gear.type = "button";
     gear.className = "pd-gear";
     gear.textContent = "⚙";
     gear.setAttribute("aria-label", "Open PromptDeck settings");
+    gear.onmousedown = (event) => event.preventDefault();
     gear.onclick = (event) => {
       event.stopPropagation();
       void sendRuntimeMessage<void>({ type: "OPEN_OPTIONS" });
     };
 
-    pill.append(main, insertHint, count, gear);
+    pill.append(main, hint, ask, count, gear);
     wrap.append(pill);
 
-    if (this.state.expanded && this.state.results.length > 1) {
-      wrap.append(this.renderDropdown());
-    }
+    const menu = document.createElement("div");
+    menu.className = "pd-menu";
+    menu.setAttribute("role", "listbox");
+    const options = Array.from({ length: MAX_DROPDOWN_OPTIONS }, (_, index) => this.createDropdownOption(index));
+    menu.append(...options);
+    wrap.append(menu);
 
-    return wrap;
+    root.append(wrap);
+    return { root, title, hint, ask, count, menu, options };
   }
 
-  private renderAskControls(): HTMLElement {
+  private createAskControls(): HTMLSpanElement {
     const controls = document.createElement("span");
     controls.className = "pd-ask";
 
@@ -380,45 +381,61 @@ class PaletteController {
     return controls;
   }
 
-  private renderDropdown(): HTMLElement {
-    const menu = document.createElement("div");
-    menu.className = "pd-menu";
-    menu.setAttribute("role", "listbox");
-    this.state.results.slice(0, 5).forEach((result, index) => {
-      const option = document.createElement("button");
-      option.type = "button";
+  private createDropdownOption(index: number): HTMLButtonElement {
+    const option = document.createElement("button");
+    option.type = "button";
+    option.className = "pd-option";
+    option.onmousedown = (event) => event.preventDefault();
+    option.onmouseenter = () => this.select(index);
+    option.onclick = () => void this.insertSelected();
+
+    const title = document.createElement("strong");
+    const meta = document.createElement("small");
+    const command = document.createElement("small");
+    option.append(title, meta, command);
+    return option;
+  }
+
+  private render(): void {
+    const { root, title, hint, ask, count, menu, options } = this.dom;
+    root.hidden = !this.state.open;
+    if (!this.state.open) return;
+
+    root.style.top = `${Math.max(12, (this.state.rect?.top || 80) - (this.state.expanded ? 250 : 48))}px`;
+    root.style.left = `${Math.max(12, Math.min(window.innerWidth - 520, this.state.rect?.left || 20))}px`;
+
+    const selected = this.state.results[this.state.selectedIndex]?.prompt;
+    title.textContent = selected?.title || (this.state.command?.raw ? "No matching prompt" : `Type ${this.settings.trigger}`);
+    hint.hidden = this.state.askPending;
+    hint.textContent =
+      this.settings.insertionMode === "ask"
+        ? "Enter choose"
+        : this.settings.insertionMode === "clipboard"
+          ? "Enter copy"
+          : "Enter insert";
+    ask.hidden = !this.state.askPending;
+    count.textContent =
+      this.state.results.length > 1
+        ? `${this.state.selectedIndex + 1}/${this.state.results.length} Up/Down`
+        : this.state.results.length === 1
+          ? "1/1"
+          : "0/0";
+
+    const showMenu = this.state.expanded && this.state.results.length > 1;
+    menu.hidden = !showMenu;
+    const visibleResults = this.state.results.slice(0, MAX_DROPDOWN_OPTIONS);
+    options.forEach((option, index) => {
+      const result = visibleResults[index];
+      option.hidden = !showMenu || !result;
       option.className = index === this.state.selectedIndex ? "pd-option pd-selected" : "pd-option";
-      option.onmouseenter = () => this.select(index);
-      option.onclick = () => void this.insertSelected();
-
-      const title = document.createElement("strong");
-      title.textContent = result.prompt.title;
-      const meta = document.createElement("small");
-      meta.textContent = result.reason;
-      const command = document.createElement("small");
-      command.textContent = result.prompt.command;
-      option.append(title, meta, command);
-      menu.append(option);
+      const [optionTitle, meta, command] = option.children;
+      optionTitle.textContent = result?.prompt.title ?? "";
+      meta.textContent = result?.reason ?? "";
+      command.textContent = result?.prompt.command ?? "";
     });
-    return menu;
   }
-
-  private renderCreate(): HTMLElement {
-    const box = document.createElement("div");
-    box.className = "pd-empty";
-    const title = document.createElement("input");
-    title.value = titleFromCommand(this.state.command!.command);
-    const content = document.createElement("textarea");
-    content.placeholder = "Prompt content";
-    const button = document.createElement("button");
-    button.className = "pd-btn";
-    button.type = "button";
-    button.textContent = `Create new prompt ${this.state.command!.command}`;
-    button.onclick = () => void this.createPrompt(this.state.command!.command, title.value, content.value);
-    box.append(title, content, button);
-    return box;
-  }
-
 }
 
-new PaletteController().start();
+if (!import.meta.env.VITEST) {
+  new PaletteController().start();
+}
