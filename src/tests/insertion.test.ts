@@ -1,4 +1,5 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
+import { createEditorAdapters, resolveEditorAdapter } from "../content/adapters/siteAdapter";
 import { copyToClipboard, insertOrCopy } from "../content/insertion/insertionService";
 
 describe("insertionService", () => {
@@ -162,6 +163,93 @@ describe("insertionService", () => {
     ]);
     expect(document.activeElement).toBe(editor);
     editor.remove();
+  });
+
+  it("lets concrete rich editor adapters apply insertion through beforeinput", async () => {
+    const editor = document.createElement("div");
+    editor.className = "ProseMirror";
+    editor.contentEditable = "true";
+    editor.tabIndex = 0;
+    editor.textContent = "Use ;;paper";
+    document.body.append(editor);
+    editor.focus();
+    editor.addEventListener("beforeinput", (event) => {
+      event.preventDefault();
+      const inputEvent = event as InputEvent;
+      const selection = document.getSelection();
+      if (!selection?.rangeCount) return;
+      const range = selection.getRangeAt(0);
+      range.deleteContents();
+      const node = document.createTextNode(inputEvent.data ?? "");
+      range.insertNode(node);
+      range.setStartAfter(node);
+      range.collapse(true);
+      selection.removeAllRanges();
+      selection.addRange(range);
+    });
+    const execCommand = vi.fn().mockReturnValue(false);
+    Object.defineProperty(document, "execCommand", { configurable: true, value: execCommand });
+
+    const result = await insertOrCopy({
+      text: "compiled prompt",
+      replaceRange: { start: 4, end: 11 },
+      target: editor
+    });
+
+    expect(result.mode).toBe("direct");
+    expect(result.adapterId).toBe("prosemirror");
+    expect(execCommand).not.toHaveBeenCalled();
+    expect(editor.textContent).toBe("Use compiled prompt");
+    editor.remove();
+  });
+
+  it("falls back to clipboard when a concrete rich editor adapter cannot verify insertion", async () => {
+    const editor = document.createElement("div");
+    editor.className = "ProseMirror";
+    editor.contentEditable = "true";
+    editor.tabIndex = 0;
+    editor.textContent = "Use ;;paper";
+    document.body.append(editor);
+    const replaceChildren = vi.spyOn(editor, "replaceChildren");
+    Object.defineProperty(document, "execCommand", { configurable: true, value: vi.fn().mockReturnValue(false) });
+    const writeText = vi.fn().mockResolvedValue(undefined);
+    Object.defineProperty(navigator, "clipboard", {
+      configurable: true,
+      value: { writeText }
+    });
+
+    const result = await insertOrCopy({
+      text: "compiled prompt",
+      replaceRange: { start: 4, end: 11 },
+      target: editor
+    });
+
+    expect(result.mode).toBe("clipboard");
+    expect(writeText).toHaveBeenCalledWith("compiled prompt");
+    expect(replaceChildren).not.toHaveBeenCalled();
+    expect(editor.textContent).toBe("Use ;;paper");
+    editor.remove();
+  });
+
+  it("resolves specialized editor adapters before the generic contenteditable fallback", () => {
+    const calls: string[] = [];
+    const adapters = createEditorAdapters({
+      textInput: () => ({ mode: "direct", ok: true, message: "text-input", adapterId: "text-input" }),
+      richContentEditable: (_request, adapterId) => {
+        calls.push(adapterId);
+        return { mode: "direct", ok: true, message: adapterId, adapterId };
+      },
+      genericContentEditable: () => ({ mode: "direct", ok: true, message: "generic", adapterId: "generic-contenteditable" })
+    });
+    const codeMirror = document.createElement("div");
+    codeMirror.className = "cm-content";
+    codeMirror.contentEditable = "true";
+    const generic = document.createElement("div");
+    generic.contentEditable = "true";
+
+    expect(resolveEditorAdapter(adapters, codeMirror, "example.com")?.id).toBe("codemirror");
+    expect(resolveEditorAdapter(adapters, generic, "example.com")?.id).toBe("generic-contenteditable");
+    expect(calls).toEqual([]);
   });
 
   it("copies both plain text and html line breaks when structured clipboard is available", async () => {

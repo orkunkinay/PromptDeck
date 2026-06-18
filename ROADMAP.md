@@ -14,6 +14,22 @@ This roadmap is directional. It does not imply dates or commitments.
 - Add lightweight site adapters only when generic behavior is insufficient.
 - Expand manual QA coverage for ChatGPT, Claude, Gemini, Perplexity, Poe, Open WebUI, Notion, Google Docs, Slack, Gmail, and generic text fields.
 
+### Manual Insertion QA Matrix
+
+Use this matrix for release checks after insertion adapter changes. A pass means PromptDeck either inserts through the direct editor pipeline without corrupting/emptying the editor, or cleanly falls back to clipboard with the typed command left intact.
+
+| Surface | Expected adapter | Status |
+| --- | --- | --- |
+| ChatGPT | ProseMirror | Ready for manual QA |
+| Claude | Lexical | Ready for manual QA |
+| Gemini | Generic contenteditable or text input | Ready for manual QA |
+| Perplexity | Generic contenteditable or text input | Ready for manual QA |
+| Notion | ProseMirror or generic contenteditable fallback | Ready for manual QA |
+| Google Docs | Clipboard fallback if direct insertion cannot verify | Ready for manual QA |
+| Slack | Lexical/Slate/Draft or generic contenteditable fallback | Ready for manual QA |
+| Gmail | Generic contenteditable fallback | Ready for manual QA |
+| Plain textarea/input | Text input | Covered by unit tests |
+
 ## System-Wide Prompt Access
 
 - Explore a companion terminal CLI for searching, printing, and copying prompts from the command line.

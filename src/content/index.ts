@@ -8,7 +8,7 @@ import { defaultSettings } from "../shared/settings/defaultSettings";
 import { PROMPTDECK_STATE_KEY } from "../shared/state/stateInvalidation";
 import { nowIso, titleFromCommand } from "../shared/utils/id";
 import { resolvePromptContent } from "../shared/versioning/versionService";
-import { genericSiteAdapter } from "./adapters/siteAdapter";
+import { canRunPromptDeck, getCurrentHost, isHostDisabled } from "./adapters/siteAdapter";
 import { parseCommandAt, type ParsedCommand } from "./commandDetection/commandParser";
 import { caretRect, getActiveEditable, getEditableSnapshot, type EditableElement } from "./insertion/editable";
 import { insertOrCopy } from "./insertion/insertionService";
@@ -131,7 +131,7 @@ class PaletteController {
 
   private refreshOpenState(): void {
     if (!this.state.open || !this.state.command) return;
-    if (genericSiteAdapter.isDisabled(genericSiteAdapter.getHost(), this.settings.disabledHosts)) {
+    if (isHostDisabled(getCurrentHost(), this.settings.disabledHosts)) {
       this.dismiss();
       return;
     }
@@ -203,9 +203,9 @@ class PaletteController {
   };
 
   private updateFromCaret(): void {
-    if (genericSiteAdapter.isDisabled(genericSiteAdapter.getHost(), this.settings.disabledHosts)) return;
+    if (isHostDisabled(getCurrentHost(), this.settings.disabledHosts)) return;
     const editable = getActiveEditable();
-    if (!editable || !genericSiteAdapter.canRun()) return;
+    if (!editable || !canRunPromptDeck()) return;
     const snapshot = getEditableSnapshot(editable);
     if (!snapshot) return;
     const command = parseCommandAt(snapshot.text, snapshot.selectionStart, this.settings.trigger);
