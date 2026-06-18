@@ -1,4 +1,5 @@
 import { getActiveEditable, isTextInput, type EditableElement } from "./editable";
+import { createEditorAdapters, resolveEditorAdapter } from "../adapters/siteAdapter";
 
 export interface InsertionRequest {
   text: string;
@@ -11,23 +12,24 @@ export interface InsertionResult {
   mode: "direct" | "clipboard";
   ok: boolean;
   message: string;
+  adapterId?: string;
 }
 
-function createTextInputEvent(type: "beforeinput" | "input", text: string): InputEvent {
+function createTextInputEvent(type: "beforeinput" | "input", text: string, inputType = "insertText"): InputEvent {
   return new InputEvent(type, {
     bubbles: true,
     cancelable: type === "beforeinput",
     data: text,
-    inputType: "insertText"
+    inputType
   });
 }
 
-function dispatchBeforeInputEvent(element: Element, text: string): boolean {
-  return element.dispatchEvent(createTextInputEvent("beforeinput", text));
+function dispatchBeforeInputEvent(element: Element, text: string, inputType = "insertText"): boolean {
+  return element.dispatchEvent(createTextInputEvent("beforeinput", text, inputType));
 }
 
-function dispatchInputEvents(element: Element, text = ""): void {
-  element.dispatchEvent(createTextInputEvent("input", text));
+function dispatchInputEvents(element: Element, text = "", inputType = "insertText"): void {
+  element.dispatchEvent(createTextInputEvent("input", text, inputType));
   element.dispatchEvent(new Event("change", { bubbles: true }));
 }
 
@@ -109,75 +111,163 @@ function selectTextOffsets(element: HTMLElement, start: number, end: number): bo
 }
 
 function readEditableText(element: HTMLElement): string {
-  return element.innerText || element.textContent || "";
+  if (typeof element.innerText === "string") return element.innerText;
+  const readNode = (node: Node): string => {
+    if (node.nodeType === Node.TEXT_NODE) return node.textContent ?? "";
+    if (node instanceof HTMLBRElement) return "\n";
+    return Array.from(node.childNodes)
+      .map((child) => readNode(child))
+      .join("");
+  };
+  return readNode(element);
 }
 
-function insertTextThroughEditorApi(element: HTMLElement, text: string): boolean {
-  if (typeof document.execCommand !== "function") return false;
-  const beforeText = readEditableText(element);
+function readElementText(element: EditableElement): string {
+  return isTextInput(element) ? element.value : readEditableText(element);
+}
+
+function normalizeEditorText(text: string): string {
+  return text.replace(/\r\n?/g, "\n");
+}
+
+function expectedTextFromRequest(beforeText: string, request: InsertionRequest): string | null {
+  if (request.preserveCommand) return null;
+  if (!request.replaceRange) return null;
+  return `${beforeText.slice(0, request.replaceRange.start)}${request.text}${beforeText.slice(request.replaceRange.end)}`;
+}
+
+function didApplyRequest(element: EditableElement, beforeText: string, request: InsertionRequest): boolean {
+  const afterText = readElementText(element);
+  const normalizedBefore = normalizeEditorText(beforeText);
+  const normalizedAfter = normalizeEditorText(afterText);
+  const expected = expectedTextFromRequest(normalizedBefore, request);
+  if (expected !== null) {
+    if (normalizedAfter === expected) return true;
+    const replacedText = normalizeEditorText(beforeText.slice(request.replaceRange!.start, request.replaceRange!.end));
+    const insertedText = normalizeEditorText(request.text);
+    const insertedMatches = insertedText ? normalizedAfter.includes(insertedText) : normalizedAfter !== normalizedBefore;
+    const replacedTextRemoved = replacedText ? !normalizedAfter.includes(replacedText) : true;
+    return normalizedAfter !== normalizedBefore && insertedMatches && replacedTextRemoved;
+  }
+  if (request.text && normalizedAfter.includes(normalizeEditorText(request.text)) && normalizedAfter !== normalizedBefore) return true;
+  return !request.text && normalizedAfter !== normalizedBefore;
+}
+
+function directResult(ok: boolean, adapterId: string, message: string): InsertionResult {
+  return { mode: "direct", ok, message, adapterId };
+}
+
+function isInsertionDebugEnabled(): boolean {
   try {
-    const accepted = document.execCommand("insertText", false, text);
-    if (!accepted) return false;
-    if (text && readEditableText(element) === beforeText) return false;
-    focusEditable(element);
-    dispatchInputEvents(element, text);
-    return true;
+    return localStorage.getItem("promptdeck:debugInsertion") === "true";
   } catch {
     return false;
   }
 }
 
-function insertIntoTextInput(element: HTMLInputElement | HTMLTextAreaElement, request: InsertionRequest): boolean {
+function debugInsertion(adapterId: string, result: InsertionResult): void {
+  if (!isInsertionDebugEnabled()) return;
+  console.debug("[PromptDeck] insertion", { adapterId, ok: result.ok, mode: result.mode, message: result.message });
+}
+
+function insertTextThroughEditorApi(element: HTMLElement, request: InsertionRequest, beforeText: string, adapterId: string): boolean {
+  if (typeof document.execCommand !== "function") return false;
+  try {
+    const accepted = document.execCommand("insertText", false, request.text);
+    if (!accepted) return false;
+    focusEditable(element);
+    dispatchInputEvents(element, request.text);
+    return didApplyRequest(element, beforeText, request);
+  } catch {
+    if (isInsertionDebugEnabled()) {
+      console.debug("[PromptDeck] insertion execCommand failed", { adapterId });
+    }
+    return false;
+  }
+}
+
+function setTextInputValue(element: HTMLInputElement | HTMLTextAreaElement, value: string): void {
+  const prototype = element instanceof HTMLTextAreaElement ? HTMLTextAreaElement.prototype : HTMLInputElement.prototype;
+  const setter = Object.getOwnPropertyDescriptor(prototype, "value")?.set;
+  if (setter) setter.call(element, value);
+  else element.value = value;
+}
+
+function insertIntoTextInput(request: InsertionRequest): InsertionResult {
+  if (!request.target || !isTextInput(request.target)) return directResult(false, "text-input", "No text input target");
+  const element = request.target;
   focusEditable(element);
+  const beforeText = element.value;
   const start = request.preserveCommand ? element.selectionStart ?? element.value.length : request.replaceRange?.start ?? element.selectionStart ?? element.value.length;
   const end = request.preserveCommand ? element.selectionEnd ?? element.value.length : request.replaceRange?.end ?? element.selectionEnd ?? element.value.length;
   const before = element.value.slice(0, start);
   const after = element.value.slice(end);
   const spacer = request.preserveCommand && before && !/\s$/.test(before) ? " " : "";
   const nextValue = `${before}${spacer}${request.text}${after}`;
-  element.value = nextValue;
+  dispatchBeforeInputEvent(element, request.text);
+  setTextInputValue(element, nextValue);
   const caret = before.length + spacer.length + request.text.length;
   element.setSelectionRange(caret, caret);
   dispatchInputEvents(element, request.text);
-  return element.value === nextValue;
+  return directResult(didApplyRequest(element, beforeText, request) || element.value === nextValue, "text-input", "Inserted");
 }
 
-function insertIntoContentEditable(element: HTMLElement, request: InsertionRequest): boolean {
-  focusEditable(element);
+function selectRangeForRequest(element: HTMLElement, request: InsertionRequest): boolean {
   if (!request.preserveCommand && request.replaceRange) {
-    const selectedRequestedRange = selectTextOffsets(element, request.replaceRange.start, request.replaceRange.end);
-    if (!dispatchBeforeInputEvent(element, request.text)) return false;
-    if (selectedRequestedRange && insertTextThroughEditorApi(element, request.text)) {
-      return true;
-    }
-
-    const selection = document.getSelection();
-    const text = readEditableText(element);
-    const before = text.slice(0, request.replaceRange.start);
-    const after = text.slice(request.replaceRange.end);
-    const nodes = nodesForPlainText(`${before}${request.text}${after}`);
-    element.replaceChildren(...nodes);
-    const lastNode = nodes[nodes.length - 1];
-    if (lastNode) moveSelectionAfter(lastNode, selection);
-    focusEditable(element);
-    dispatchInputEvents(element, request.text);
-    return true;
+    return selectTextOffsets(element, request.replaceRange.start, request.replaceRange.end);
   }
+  return true;
+}
 
+function getSelectionRangeInside(element: HTMLElement): Range | null {
   const selection = document.getSelection();
-  if (!selection) return false;
+  if (!selection) return null;
   if (!selection.rangeCount) {
-    if (!dispatchBeforeInputEvent(element, request.text)) return false;
-    element.append(...nodesForPlainText(request.text));
-    focusEditable(element);
-    dispatchInputEvents(element, request.text);
-    return true;
+    const range = document.createRange();
+    range.selectNodeContents(element);
+    range.collapse(false);
+    selection.addRange(range);
+    return range;
   }
   const range = selection.getRangeAt(0);
-  if (!element.contains(range.startContainer)) return false;
+  if (!element.contains(range.startContainer)) return null;
+  return range;
+}
 
-  if (!dispatchBeforeInputEvent(element, request.text)) return false;
-  if (insertTextThroughEditorApi(element, request.text)) return true;
+function insertIntoRichContentEditable(request: InsertionRequest, adapterId: string): InsertionResult {
+  if (!(request.target instanceof HTMLElement)) return directResult(false, adapterId, "No contenteditable target");
+  const element = request.target;
+  focusEditable(element);
+  const beforeText = readEditableText(element);
+  const selectedRequestedRange = selectRangeForRequest(element, request);
+  dispatchBeforeInputEvent(element, request.text);
+  if (didApplyRequest(element, beforeText, request)) {
+    dispatchInputEvents(element, request.text);
+    return directResult(true, adapterId, "Inserted");
+  }
+  if (selectedRequestedRange && insertTextThroughEditorApi(element, request, beforeText, adapterId)) {
+    return directResult(true, adapterId, "Inserted");
+  }
+  return directResult(false, adapterId, "Direct insertion failed");
+}
+
+function insertIntoGenericContentEditable(request: InsertionRequest): InsertionResult {
+  if (!(request.target instanceof HTMLElement)) return directResult(false, "generic-contenteditable", "No contenteditable target");
+  const element = request.target;
+  focusEditable(element);
+  const beforeText = readEditableText(element);
+  const selectedRequestedRange = selectRangeForRequest(element, request);
+  dispatchBeforeInputEvent(element, request.text);
+  if (didApplyRequest(element, beforeText, request)) {
+    dispatchInputEvents(element, request.text);
+    return directResult(true, "generic-contenteditable", "Inserted");
+  }
+  if (selectedRequestedRange && insertTextThroughEditorApi(element, request, beforeText, "generic-contenteditable")) {
+    return directResult(true, "generic-contenteditable", "Inserted");
+  }
+  const selection = document.getSelection();
+  const range = getSelectionRangeInside(element);
+  if (!selection || !range) return directResult(false, "generic-contenteditable", "Direct insertion failed");
 
   range.deleteContents();
   const nodes = nodesForPlainText(request.text);
@@ -189,19 +279,29 @@ function insertIntoContentEditable(element: HTMLElement, request: InsertionReque
   }
   focusEditable(element);
   dispatchInputEvents(element, request.text);
-  return true;
+  return directResult(didApplyRequest(element, beforeText, request), "generic-contenteditable", "Inserted");
 }
 
-function tryDirectInsertion(request: InsertionRequest): boolean {
+const editorAdapters = createEditorAdapters({
+  textInput: insertIntoTextInput,
+  richContentEditable: insertIntoRichContentEditable,
+  genericContentEditable: insertIntoGenericContentEditable
+});
+
+async function tryDirectInsertion(request: InsertionRequest): Promise<InsertionResult> {
   const element: EditableElement | null = request.target ?? getActiveEditable();
   try {
-    return element
-      ? isTextInput(element)
-        ? insertIntoTextInput(element, request)
-        : insertIntoContentEditable(element as HTMLElement, request)
-      : false;
-  } catch {
-    return false;
+    if (!element) return directResult(false, "none", "No active editable");
+    const adapter = resolveEditorAdapter(editorAdapters, element);
+    if (!adapter) return directResult(false, "none", "No matching editor adapter");
+    const result = await adapter.insert({ ...request, target: element });
+    debugInsertion(adapter.id, result);
+    return result;
+  } catch (error) {
+    const message = error instanceof Error ? error.message : "Direct insertion failed";
+    const result = directResult(false, "unknown", message);
+    debugInsertion("unknown", result);
+    return result;
   }
 }
 
@@ -289,13 +389,13 @@ export async function insertOrCopy(request: InsertionRequest, preferClipboard = 
   if (preferClipboard) {
     await copyToClipboard(request.text);
     if (request.replaceRange && !request.preserveCommand) {
-      tryDirectInsertion({ ...request, text: "" });
+      await tryDirectInsertion({ ...request, text: "" });
     }
     return { mode: "clipboard", ok: true, message: `Copied — press ${modifier}` };
   }
 
-  const inserted = tryDirectInsertion(request);
-  if (inserted) return { mode: "direct", ok: true, message: "Inserted" };
+  const inserted = await tryDirectInsertion(request);
+  if (inserted.ok) return inserted;
 
   await copyToClipboard(request.text);
   return { mode: "clipboard", ok: true, message: `Copied — press ${modifier}` };

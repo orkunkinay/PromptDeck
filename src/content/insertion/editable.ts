@@ -16,7 +16,8 @@ export function isTextInput(element: Element | null): element is HTMLInputElemen
 }
 
 export function isContentEditableElement(element: Element | null): element is HTMLElement {
-  return element instanceof HTMLElement && Boolean(element.isContentEditable || element.closest("[contenteditable='true']"));
+  if (!(element instanceof HTMLElement)) return false;
+  return Boolean(element.isContentEditable || element.contentEditable === "true" || element.closest("[contenteditable='true']"));
 }
 
 export function getActiveEditable(): EditableElement | null {
