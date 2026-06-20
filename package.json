@@ -21,9 +21,12 @@
     "dev": "vite --host 127.0.0.1",
     "build": "tsc --noEmit && vite build && vite build --config vite.content.config.ts",
     "build:debug": "tsc --noEmit && vite build --mode development && vite build --mode development --config vite.content.config.ts",
-    "package:chrome": "npm run build && node scripts/package-chrome.mjs",
+    "package:chrome": "npm run build && npm run package:chrome:dist",
+    "package:chrome:dist": "node scripts/package-chrome.mjs",
+    "validate:package": "node scripts/package-chrome.mjs --validate-only",
     "lint": "npm run typecheck",
     "test": "vitest run",
+    "test:e2e": "playwright test",
     "test:watch": "vitest",
     "preview": "vite preview --host 127.0.0.1",
     "typecheck": "tsc --noEmit"
@@ -37,6 +40,7 @@
     "zustand": "^4.5.2"
   },
   "devDependencies": {
+    "@playwright/test": "^1.61.0",
     "@types/chrome": "^0.0.268",
     "@types/node": "^20.19.40",
     "@types/react": "^18.2.66",

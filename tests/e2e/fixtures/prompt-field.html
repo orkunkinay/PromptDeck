@@ -1,0 +1,63 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <title>PromptDeck E2E Fixture</title>
+    <style>
+      body {
+        margin: 24px;
+        color: #111827;
+        font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      }
+
+      label {
+        display: block;
+        margin: 0 0 18px;
+        font-size: 13px;
+        font-weight: 650;
+      }
+
+      textarea,
+      [contenteditable="true"] {
+        display: block;
+        width: min(720px, calc(100vw - 48px));
+        min-height: 132px;
+        margin-top: 6px;
+        border: 1px solid #9ca3af;
+        border-radius: 6px;
+        padding: 10px;
+        font: 14px/1.45 ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+        white-space: pre-wrap;
+      }
+    </style>
+  </head>
+  <body>
+    <label>
+      Textarea
+      <textarea id="prompt-input"></textarea>
+    </label>
+
+    <label>
+      Contenteditable
+      <div id="rich-editor" contenteditable="true" role="textbox" aria-label="Contenteditable prompt target"></div>
+    </label>
+
+    <label>
+      Fallback textarea
+      <textarea id="fallback-input"></textarea>
+    </label>
+
+    <script>
+      const fallback = document.getElementById("fallback-input");
+
+      fallback.addEventListener("input", (event) => {
+        if (fallback.dataset.rejectDirect !== "true") return;
+        if (event.inputType !== "insertText") return;
+        if (fallback.value.startsWith(";;")) return;
+
+        fallback.value = fallback.dataset.command || ";;blog";
+        fallback.setSelectionRange(fallback.value.length, fallback.value.length);
+      });
+    </script>
+  </body>
+</html>
