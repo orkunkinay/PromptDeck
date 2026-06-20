@@ -33,10 +33,10 @@ import {
 } from "../shared/backup";
 import { promptToMarkdown } from "../shared/importExport/markdown";
 import { compilePrompt, ensureVariableDefinitions } from "../shared/promptCompiler/compiler";
+import { sendRuntimeMessage } from "../shared/runtime/sendMessage";
 import { searchPrompts } from "../shared/search/fuzzySearch";
 import { defaultSettings } from "../shared/settings/defaultSettings";
-import { settingsService } from "../shared/settings/settingsService";
-import { createPromptFromCommand, promptRepository } from "../shared/storage/promptRepository";
+import { createPromptFromCommand } from "../shared/storage/promptRepository";
 import { limitPromptTitle, MAX_PROMPT_TITLE_LENGTH, nowIso } from "../shared/utils/id";
 import { deleteVersion, diffLines, getDefaultVersion, restoreVersionAsLatest, setDefaultVersion } from "../shared/versioning/versionService";
 import { removeVariant, upsertVariant } from "../shared/versioning/variantService";
@@ -855,7 +855,10 @@ function App() {
   const results = useMemo(() => searchPrompts(prompts, query), [prompts, query]);
 
   const load = async () => {
-    const [nextPrompts, nextSettings] = await Promise.all([promptRepository.list(), settingsService.get()]);
+    const [nextPrompts, nextSettings] = await Promise.all([
+      sendRuntimeMessage<Prompt[]>({ type: "PROMPTS_LIST" }),
+      sendRuntimeMessage<PromptDeckSettings>({ type: "SETTINGS_GET" })
+    ]);
     setPrompts(nextPrompts);
     setSettings(nextSettings);
     setSelectedId((current) => current || nextPrompts[0]?.id || "");
@@ -868,7 +871,7 @@ function App() {
   const savePrompt = async (prompt: Prompt, content: string, minorEdit: boolean, changelog: string) => {
     setStatus("Saving...");
     try {
-      const saved = await promptRepository.save(prompt, { content, minorEdit, changelog });
+      const saved = await sendRuntimeMessage<Prompt>({ type: "PROMPTS_SAVE", prompt, content, minorEdit, changelog });
       await load();
       setSelectedId(saved.id);
       setStatus("Saved locally");
@@ -880,14 +883,14 @@ function App() {
 
   const createPrompt = async () => {
     const prompt = createPromptFromCommand(nextBlankPromptCommand(prompts));
-    const saved = await promptRepository.save(prompt, { minorEdit: true });
+    const saved = await sendRuntimeMessage<Prompt>({ type: "PROMPTS_SAVE", prompt, minorEdit: true });
     await load();
     setSelectedId(saved.id);
   };
 
   const deletePrompt = async (id: string) => {
     if (!confirm("Delete this prompt and all versions locally?")) return;
-    await promptRepository.delete(id);
+    await sendRuntimeMessage<void>({ type: "PROMPTS_DELETE", id });
     await load();
   };
 
@@ -920,8 +923,8 @@ function App() {
     try {
       await savePreImportSnapshot(prompts, settings);
       const result = applyImportPlanToState(pendingImport.plan, importMode);
-      await promptRepository.replaceAll(result.prompts);
-      await settingsService.save(result.settings);
+      await sendRuntimeMessage<void>({ type: "PROMPTS_REPLACE_ALL", prompts: result.prompts });
+      await sendRuntimeMessage<PromptDeckSettings>({ type: "SETTINGS_SAVE", settings: result.settings });
       await load();
       setPendingImport(null);
       setStatus(
@@ -935,7 +938,7 @@ function App() {
   };
 
   const updateSettings = async (patch: Partial<PromptDeckSettings>) => {
-    const next = await settingsService.save({ ...settings, ...patch });
+    const next = await sendRuntimeMessage<PromptDeckSettings>({ type: "SETTINGS_SAVE", settings: { ...settings, ...patch } });
     setSettings(next);
   };
 
@@ -962,7 +965,7 @@ function App() {
           onImport={(file) => void previewBackupImport(file)}
           onDeleteAll={async () => {
             if (confirm("Delete all PromptDeck data from this browser?")) {
-              await promptRepository.replaceAll([]);
+              await sendRuntimeMessage<void>({ type: "PROMPTS_REPLACE_ALL", prompts: [] });
               await load();
             }
           }}

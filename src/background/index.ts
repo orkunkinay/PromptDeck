@@ -3,7 +3,7 @@ import type { Prompt, PromptDeckSettings } from "../shared/models/prompt";
 import { promptRepository } from "../shared/storage/promptRepository";
 import { settingsService } from "../shared/settings/settingsService";
 
-async function handleMessage(message: RuntimeMessage): Promise<RuntimeResponse<unknown>> {
+export async function handleMessage(message: RuntimeMessage): Promise<RuntimeResponse<unknown>> {
   try {
     switch (message.type) {
       case "PROMPTS_LIST":
@@ -13,7 +13,8 @@ async function handleMessage(message: RuntimeMessage): Promise<RuntimeResponse<u
           ok: true,
           data: await promptRepository.save(message.prompt, {
             minorEdit: message.minorEdit,
-            changelog: message.changelog
+            changelog: message.changelog,
+            content: message.content
           })
         };
       case "PROMPTS_DELETE":
@@ -23,6 +24,9 @@ async function handleMessage(message: RuntimeMessage): Promise<RuntimeResponse<u
         return { ok: true, data: await promptRepository.duplicate(message.id) };
       case "PROMPTS_RECORD_USAGE":
         await promptRepository.recordUsage(message.id, message.host);
+        return { ok: true };
+      case "PROMPTS_REPLACE_ALL":
+        await promptRepository.replaceAll(message.prompts);
         return { ok: true };
       case "SETTINGS_GET":
         return { ok: true, data: await settingsService.get() };
