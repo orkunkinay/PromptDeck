@@ -204,4 +204,38 @@ describe("PaletteController", () => {
     expect(root.querySelector(".pd-menu")?.hasAttribute("hidden")).toBe(false);
     expect(document.activeElement).toBe(textarea);
   });
+
+  it("exposes palette listbox, option, ask-control, and reduced-motion attributes", async () => {
+    installChromeMock([prompt("paper", "Paper Prompt", "/paper"), prompt("plan", "Plan Prompt", "/plan")], {
+      ...defaultSettings,
+      insertionMode: "ask"
+    });
+    controller = new PaletteController();
+    controller.start();
+    await flushPromises();
+
+    openPalette(";;p");
+    const root = document.getElementById("promptdeck-root")?.shadowRoot?.querySelector(".pd-root") as HTMLDivElement;
+    const main = root.querySelector(".pd-pill-main") as HTMLButtonElement;
+    main.dispatchEvent(new MouseEvent("click", { bubbles: true, composed: true }));
+
+    const menu = root.querySelector(".pd-menu") as HTMLDivElement;
+    const activeOption = root.querySelector("#promptdeck-option-0") as HTMLButtonElement;
+    const ask = root.querySelector(".pd-ask") as HTMLSpanElement;
+
+    const shadowRoot = root.getRootNode() as ShadowRoot;
+    expect(shadowRoot).toBeInstanceOf(ShadowRoot);
+    expect(shadowRoot.querySelector("style")?.textContent).toContain("prefers-reduced-motion");
+    expect(main.getAttribute("aria-haspopup")).toBe("listbox");
+    expect(main.getAttribute("aria-expanded")).toBe("true");
+    expect(menu.getAttribute("role")).toBe("listbox");
+    expect(menu.getAttribute("aria-activedescendant")).toBe("promptdeck-option-0");
+    expect(activeOption.getAttribute("role")).toBe("option");
+    expect(activeOption.getAttribute("aria-selected")).toBe("true");
+    expect(activeOption.getAttribute("aria-label")).toContain("Paper Prompt");
+    expect(ask.getAttribute("role")).toBe("group");
+    expect(ask.getAttribute("aria-label")).toBe("Choose how to use this prompt");
+    expect(root.querySelector("[aria-label='Insert selected prompt']")).toBeTruthy();
+    expect(root.querySelector("[aria-label='Copy selected prompt']")).toBeTruthy();
+  });
 });
