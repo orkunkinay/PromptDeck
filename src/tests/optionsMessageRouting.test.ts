@@ -2,6 +2,8 @@ import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import type { PromptDeckSettings } from "../shared/models/prompt";
+import { defaultSettings } from "../shared/settings/defaultSettings";
+import { seedPrompts } from "../shared/seedPrompts";
 
 const mocks = vi.hoisted(() => ({
   save: vi.fn(),
@@ -40,8 +42,8 @@ describe("options message routing", () => {
 
   it("handles options write messages through the background handler", async () => {
     const { handleMessage } = await import("../background");
-    const prompt = { id: "p", title: "Prompt" };
-    const settings = { trigger: ";;", telemetryEnabled: false } as PromptDeckSettings;
+    const prompt = seedPrompts[0];
+    const settings: PromptDeckSettings = { ...defaultSettings, trigger: ";;" };
 
     mocks.save.mockResolvedValue(prompt);
     mocks.replaceAll.mockResolvedValue(undefined);
@@ -59,6 +61,17 @@ describe("options message routing", () => {
     expect(mocks.deletePrompt).toHaveBeenCalledWith("p");
     expect(mocks.replaceAll).toHaveBeenCalledWith([prompt]);
     expect(mocks.saveSettings).toHaveBeenCalledWith(settings);
+  });
+
+  it("rejects malformed PROMPTS_SAVE messages without persisting", async () => {
+    const { handleMessage } = await import("../background");
+
+    await expect(handleMessage({ type: "PROMPTS_SAVE", prompt: { id: "p", title: "Prompt" } })).resolves.toEqual({
+      ok: false,
+      error: "Invalid PROMPTS_SAVE message: prompt must be a valid prompt."
+    });
+
+    expect(mocks.save).not.toHaveBeenCalled();
   });
 
   it("keeps options-page writes on runtime messages instead of direct repositories", () => {

@@ -9,7 +9,7 @@ export type RuntimeMessage =
   | { type: "PROMPTS_REPLACE_ALL"; prompts: Prompt[] }
   | { type: "SETTINGS_GET" }
   | { type: "SETTINGS_SAVE"; settings: PromptDeckSettings }
-  | { type: "PROMPTDECK_STATE_CHANGED" }
+  // State refreshes intentionally use chrome.storage.onChanged via notifyPromptDeckStateChanged.
   | { type: "OPEN_OPTIONS" };
 
 export interface RuntimeResponse<T> {
