@@ -22,6 +22,7 @@ const PALETTE_CSS = `
 .pd-option{display:grid;grid-template-columns:1fr auto;width:100%;gap:4px 12px;border:0;border-bottom:1px solid rgba(148,163,184,.16);background:transparent;color:inherit;padding:9px 10px;text-align:left;cursor:pointer}.pd-option:last-child{border-bottom:0}.pd-option strong{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.pd-option small{color:#64748b}.pd-selected{background:rgba(37,99,235,.1)}
 .pd-empty{display:flex;align-items:center;gap:8px;color:#64748b}
 @media (prefers-color-scheme:dark){.pd-root{color:#f8fafc}.pd-pill,.pd-menu{background:#0f172a;border-color:rgba(71,85,105,.75)}.pd-icon{background:#1e293b}.pd-hint,.pd-count,.pd-option small{color:#94a3b8}}
+@media (prefers-reduced-motion:reduce){.pd-root,.pd-root *{scroll-behavior:auto!important;transition:none!important;animation:none!important}}
 `;
 
 interface State {
@@ -38,6 +39,7 @@ interface State {
 
 interface PaletteDom {
   root: HTMLDivElement;
+  main: HTMLButtonElement;
   title: HTMLSpanElement;
   hint: HTMLSpanElement;
   ask: HTMLSpanElement;
@@ -310,6 +312,10 @@ export class PaletteController {
     const main = document.createElement("button");
     main.type = "button";
     main.className = "pd-pill-main";
+    main.setAttribute("aria-controls", "promptdeck-results");
+    main.setAttribute("aria-expanded", "false");
+    main.setAttribute("aria-haspopup", "listbox");
+    main.setAttribute("aria-label", "Toggle PromptDeck results");
     main.onmousedown = (event) => event.preventDefault();
     main.onclick = () => this.setState({ expanded: !this.state.expanded });
 
@@ -345,23 +351,28 @@ export class PaletteController {
     wrap.append(pill);
 
     const menu = document.createElement("div");
+    menu.id = "promptdeck-results";
     menu.className = "pd-menu";
     menu.setAttribute("role", "listbox");
+    menu.setAttribute("aria-label", "PromptDeck prompt results");
     const options = Array.from({ length: MAX_DROPDOWN_OPTIONS }, (_, index) => this.createDropdownOption(index));
     menu.append(...options);
     wrap.append(menu);
 
     root.append(wrap);
-    return { root, title, hint, ask, count, menu, options };
+    return { root, main, title, hint, ask, count, menu, options };
   }
 
   private createAskControls(): HTMLSpanElement {
     const controls = document.createElement("span");
     controls.className = "pd-ask";
+    controls.setAttribute("role", "group");
+    controls.setAttribute("aria-label", "Choose how to use this prompt");
 
     const insert = document.createElement("button");
     insert.type = "button";
     insert.textContent = "Insert";
+    insert.setAttribute("aria-label", "Insert selected prompt");
     insert.onmousedown = (event) => event.preventDefault();
     insert.onclick = (event) => {
       event.stopPropagation();
@@ -371,6 +382,7 @@ export class PaletteController {
     const copy = document.createElement("button");
     copy.type = "button";
     copy.textContent = "Copy";
+    copy.setAttribute("aria-label", "Copy selected prompt");
     copy.onmousedown = (event) => event.preventDefault();
     copy.onclick = (event) => {
       event.stopPropagation();
@@ -383,8 +395,10 @@ export class PaletteController {
 
   private createDropdownOption(index: number): HTMLButtonElement {
     const option = document.createElement("button");
+    option.id = `promptdeck-option-${index}`;
     option.type = "button";
     option.className = "pd-option";
+    option.setAttribute("role", "option");
     option.onmousedown = (event) => event.preventDefault();
     option.onmouseenter = () => this.select(index);
     option.onclick = () => void this.insertSelected();
@@ -397,9 +411,13 @@ export class PaletteController {
   }
 
   private render(): void {
-    const { root, title, hint, ask, count, menu, options } = this.dom;
+    const { root, main, title, hint, ask, count, menu, options } = this.dom;
     root.hidden = !this.state.open;
-    if (!this.state.open) return;
+    if (!this.state.open) {
+      main.setAttribute("aria-expanded", "false");
+      menu.removeAttribute("aria-activedescendant");
+      return;
+    }
 
     root.style.top = `${Math.max(12, (this.state.rect?.top || 80) - (this.state.expanded ? 250 : 48))}px`;
     root.style.left = `${Math.max(12, Math.min(window.innerWidth - 520, this.state.rect?.left || 20))}px`;
@@ -423,11 +441,20 @@ export class PaletteController {
 
     const showMenu = this.state.expanded && this.state.results.length > 1;
     menu.hidden = !showMenu;
+    main.setAttribute("aria-expanded", String(showMenu));
     const visibleResults = this.state.results.slice(0, MAX_DROPDOWN_OPTIONS);
+    const activeOption = showMenu ? options[this.state.selectedIndex] : undefined;
+    if (activeOption && visibleResults[this.state.selectedIndex]) {
+      menu.setAttribute("aria-activedescendant", activeOption.id);
+    } else {
+      menu.removeAttribute("aria-activedescendant");
+    }
     options.forEach((option, index) => {
       const result = visibleResults[index];
       option.hidden = !showMenu || !result;
       option.className = index === this.state.selectedIndex ? "pd-option pd-selected" : "pd-option";
+      option.setAttribute("aria-selected", String(Boolean(result) && index === this.state.selectedIndex));
+      option.setAttribute("aria-label", result ? `${result.prompt.title}, ${result.prompt.command}, ${result.reason}` : "");
       const [optionTitle, meta, command] = option.children;
       optionTitle.textContent = result?.prompt.title ?? "";
       meta.textContent = result?.reason ?? "";
