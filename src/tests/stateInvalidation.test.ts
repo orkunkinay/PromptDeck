@@ -6,7 +6,7 @@ describe("state invalidation", () => {
     vi.mocked(chrome.storage.local.set).mockClear();
   });
 
-  it("writes a chrome.storage.local signal for content script refreshes", async () => {
+  it("uses chrome.storage.local as the single source of truth for content script refreshes", async () => {
     await notifyPromptDeckStateChanged("prompts");
 
     expect(chrome.storage.local.set).toHaveBeenCalledTimes(1);
