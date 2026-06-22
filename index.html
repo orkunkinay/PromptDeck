@@ -1,0 +1,694 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>PromptDeck Documentation</title>
+    <style>
+      :root {
+        color-scheme: light;
+        --bg: #f7f8fb;
+        --surface: #ffffff;
+        --surface-muted: #eef2f7;
+        --text: #172033;
+        --muted: #5c677a;
+        --border: #d9e0ea;
+        --primary: #2563eb;
+        --primary-dark: #1e3a8a;
+        --green: #0f766e;
+        --amber: #a16207;
+        --ink: #111827;
+        --code-bg: #111827;
+        --code-text: #e5e7eb;
+      }
+
+      * {
+        box-sizing: border-box;
+      }
+
+      html {
+        scroll-behavior: smooth;
+      }
+
+      body {
+        margin: 0;
+        background: var(--bg);
+        color: var(--text);
+        font-family:
+          Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+        font-size: 16px;
+        line-height: 1.6;
+      }
+
+      a {
+        color: var(--primary);
+        text-decoration: none;
+      }
+
+      a:hover {
+        text-decoration: underline;
+      }
+
+      img,
+      video {
+        display: block;
+        max-width: 100%;
+      }
+
+      .site-header {
+        position: sticky;
+        top: 0;
+        z-index: 10;
+        border-bottom: 1px solid var(--border);
+        background: rgba(255, 255, 255, 0.94);
+        backdrop-filter: blur(12px);
+      }
+
+      .header-inner {
+        display: flex;
+        min-height: 64px;
+        max-width: 1180px;
+        margin: 0 auto;
+        padding: 0 24px;
+        align-items: center;
+        justify-content: space-between;
+        gap: 24px;
+      }
+
+      .brand {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        min-width: 0;
+      }
+
+      .brand img {
+        width: 36px;
+        height: 36px;
+        border-radius: 8px;
+      }
+
+      .brand strong {
+        display: block;
+        color: var(--ink);
+        font-size: 15px;
+        line-height: 1.2;
+      }
+
+      .brand span {
+        display: block;
+        color: var(--muted);
+        font-size: 12px;
+        line-height: 1.2;
+      }
+
+      nav {
+        display: flex;
+        flex-wrap: wrap;
+        justify-content: flex-end;
+        gap: 6px 16px;
+        font-size: 14px;
+      }
+
+      nav a {
+        color: var(--muted);
+      }
+
+      .hero {
+        border-bottom: 1px solid var(--border);
+        background: #ffffff;
+      }
+
+      .hero-inner {
+        display: grid;
+        grid-template-columns: minmax(0, 0.9fr) minmax(420px, 1.1fr);
+        max-width: 1180px;
+        margin: 0 auto;
+        padding: 56px 24px 40px;
+        gap: 36px;
+        align-items: center;
+      }
+
+      .eyebrow {
+        display: inline-flex;
+        width: fit-content;
+        margin-bottom: 16px;
+        border: 1px solid #b7d7d3;
+        border-radius: 999px;
+        background: #e8f5f3;
+        color: var(--green);
+        padding: 4px 10px;
+        font-size: 12px;
+        font-weight: 700;
+        line-height: 1.2;
+      }
+
+      h1,
+      h2,
+      h3 {
+        margin: 0;
+        color: var(--ink);
+        line-height: 1.15;
+      }
+
+      h1 {
+        max-width: 760px;
+        font-size: clamp(2.25rem, 5vw, 4.75rem);
+        letter-spacing: 0;
+      }
+
+      h2 {
+        font-size: clamp(1.6rem, 3vw, 2.25rem);
+      }
+
+      h3 {
+        font-size: 1rem;
+      }
+
+      .lead {
+        max-width: 680px;
+        margin: 18px 0 0;
+        color: var(--muted);
+        font-size: 18px;
+      }
+
+      .actions {
+        display: flex;
+        flex-wrap: wrap;
+        margin-top: 28px;
+        gap: 12px;
+      }
+
+      .button {
+        display: inline-flex;
+        min-height: 42px;
+        align-items: center;
+        justify-content: center;
+        border: 1px solid var(--border);
+        border-radius: 8px;
+        background: var(--surface);
+        color: var(--ink);
+        padding: 9px 14px;
+        font-size: 14px;
+        font-weight: 700;
+      }
+
+      .button.primary {
+        border-color: var(--primary);
+        background: var(--primary);
+        color: #ffffff;
+      }
+
+      .hero-shot {
+        overflow: hidden;
+        border: 1px solid var(--border);
+        border-radius: 8px;
+        background: var(--surface-muted);
+        box-shadow: 0 24px 60px rgba(23, 32, 51, 0.18);
+      }
+
+      .hero-shot img {
+        width: 100%;
+      }
+
+      main {
+        max-width: 1180px;
+        margin: 0 auto;
+        padding: 42px 24px 64px;
+      }
+
+      section {
+        padding: 34px 0;
+        border-bottom: 1px solid var(--border);
+      }
+
+      section:last-child {
+        border-bottom: 0;
+      }
+
+      .section-head {
+        display: flex;
+        align-items: end;
+        justify-content: space-between;
+        gap: 24px;
+        margin-bottom: 20px;
+      }
+
+      .section-head p {
+        max-width: 620px;
+        margin: 8px 0 0;
+        color: var(--muted);
+      }
+
+      .grid {
+        display: grid;
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+        gap: 16px;
+      }
+
+      .two-col {
+        display: grid;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 24px;
+      }
+
+      .card {
+        border: 1px solid var(--border);
+        border-radius: 8px;
+        background: var(--surface);
+        padding: 18px;
+      }
+
+      .card p,
+      .card ul,
+      .card ol {
+        margin: 10px 0 0;
+        color: var(--muted);
+      }
+
+      .card ul,
+      .card ol {
+        padding-left: 20px;
+      }
+
+      .media-card {
+        overflow: hidden;
+        border: 1px solid var(--border);
+        border-radius: 8px;
+        background: var(--surface);
+      }
+
+      .media-card img {
+        width: 100%;
+        border-bottom: 1px solid var(--border);
+      }
+
+      .media-card div {
+        padding: 14px 16px 16px;
+      }
+
+      .media-card p {
+        margin: 6px 0 0;
+        color: var(--muted);
+        font-size: 14px;
+      }
+
+      code {
+        border-radius: 6px;
+        background: #e9edf4;
+        color: var(--ink);
+        padding: 0.12em 0.38em;
+        font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", monospace;
+        font-size: 0.92em;
+      }
+
+      pre {
+        overflow: auto;
+        margin: 14px 0 0;
+        border-radius: 8px;
+        background: var(--code-bg);
+        color: var(--code-text);
+        padding: 16px;
+        font-size: 13px;
+        line-height: 1.55;
+      }
+
+      pre code {
+        background: transparent;
+        color: inherit;
+        padding: 0;
+      }
+
+      .table-wrap {
+        overflow-x: auto;
+        border: 1px solid var(--border);
+        border-radius: 8px;
+        background: var(--surface);
+      }
+
+      table {
+        width: 100%;
+        min-width: 680px;
+        border-collapse: collapse;
+        font-size: 14px;
+      }
+
+      th,
+      td {
+        padding: 12px 14px;
+        border-bottom: 1px solid var(--border);
+        text-align: left;
+        vertical-align: top;
+      }
+
+      th {
+        background: var(--surface-muted);
+        color: var(--ink);
+      }
+
+      tr:last-child td {
+        border-bottom: 0;
+      }
+
+      .note {
+        border-left: 4px solid var(--amber);
+        background: #fff8e6;
+        padding: 14px 16px;
+        color: #633d05;
+      }
+
+      .footer {
+        border-top: 1px solid var(--border);
+        background: var(--surface);
+      }
+
+      .footer-inner {
+        max-width: 1180px;
+        margin: 0 auto;
+        padding: 22px 24px;
+        color: var(--muted);
+        font-size: 14px;
+      }
+
+      @media (max-width: 900px) {
+        .header-inner {
+          align-items: flex-start;
+          flex-direction: column;
+          padding: 16px 20px;
+        }
+
+        nav {
+          justify-content: flex-start;
+        }
+
+        .hero-inner,
+        .two-col,
+        .grid {
+          grid-template-columns: 1fr;
+        }
+
+        .hero-inner {
+          padding-top: 36px;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <header class="site-header">
+      <div class="header-inner">
+        <a class="brand" href="#top" aria-label="PromptDeck documentation home">
+          <img src="public/logo.png" alt="" />
+          <span>
+            <strong>PromptDeck</strong>
+            <span>Product and developer documentation</span>
+          </span>
+        </a>
+        <nav aria-label="Documentation sections">
+          <a href="#quick-start">Quick Start</a>
+          <a href="#usage">Usage</a>
+          <a href="#architecture">Architecture</a>
+          <a href="#development">Development</a>
+          <a href="#troubleshooting">Troubleshooting</a>
+        </nav>
+      </div>
+    </header>
+
+    <div id="top" class="hero">
+      <div class="hero-inner">
+        <div>
+          <span class="eyebrow">Local-first prompt command center</span>
+          <h1>PromptDeck keeps reusable AI prompts one trigger away.</h1>
+          <p class="lead">
+            Save prompts locally, search them from browser text fields with <code>;;</code>, insert the selected prompt, and manage versions, variants, backups, and settings from a focused dashboard. This repo currently ships the browser extension while keeping the product direction open for terminals, editors, and other prompt surfaces.
+          </p>
+          <div class="actions">
+            <a class="button primary" href="#quick-start">Get started</a>
+            <a class="button" href="README.md">Read README</a>
+            <a class="button" href="https://chromewebstore.google.com/detail/promptdeck/ibhheacppbbekiihiabfmplinfopcind">Chrome Web Store</a>
+          </div>
+        </div>
+        <figure class="hero-shot" aria-label="PromptDeck manager screenshot">
+          <img src="public/manager_ui.png" alt="PromptDeck manager showing prompt details, content, placeholders, and variants" />
+        </figure>
+      </div>
+    </div>
+
+    <main>
+      <section id="quick-start">
+        <div class="section-head">
+          <div>
+            <h2>Quick Start</h2>
+            <p>Build the extension, load the generated <code>dist/</code> folder, and test the command helper in a normal web page.</p>
+          </div>
+        </div>
+        <div class="two-col">
+          <div class="card">
+            <h3>Install from source</h3>
+            <pre><code>git clone https://github.com/orkunkinay/promptdeck.git
+cd promptdeck
+npm install
+npm run build</code></pre>
+            <ol>
+              <li>Open <code>chrome://extensions</code>.</li>
+              <li>Enable Developer mode.</li>
+              <li>Choose Load unpacked.</li>
+              <li>Select <code>dist/</code>.</li>
+              <li>Open a page with a text field and type <code>;;</code>.</li>
+            </ol>
+          </div>
+          <div class="card">
+            <h3>Open the manager</h3>
+            <p>Use the browser action, the extension options page, or the configured extension command.</p>
+            <ul>
+              <li>macOS: <code>Command+K</code></li>
+              <li>Windows/Linux: <code>Ctrl+K</code></li>
+            </ul>
+            <p>After rebuilding locally, reload the extension in <code>chrome://extensions</code> and refresh pages where PromptDeck should run.</p>
+          </div>
+        </div>
+      </section>
+
+      <section id="usage">
+        <div class="section-head">
+          <div>
+            <h2>Usage</h2>
+            <p>PromptDeck separates the trigger from prompt commands. The default trigger is <code>;;</code>; prompt commands are stored as slash commands such as <code>/paper-reading</code>.</p>
+          </div>
+        </div>
+        <div class="two-col">
+          <div class="media-card">
+            <img src="public/autocomplete_helper.png" alt="PromptDeck autocomplete helper inside a browser text field" />
+            <div>
+              <h3>Autocomplete helper</h3>
+              <p>Type the trigger, keep typing to search, then insert or copy the selected prompt.</p>
+            </div>
+          </div>
+          <div class="card">
+            <h3>Keyboard behavior</h3>
+            <ul>
+              <li><code>Enter</code> or <code>Tab</code>: use the selected prompt.</li>
+              <li><code>ArrowUp</code> and <code>ArrowDown</code>: move through results.</li>
+              <li><code>Command+ArrowDown</code> or <code>Ctrl+ArrowDown</code>: expand the result menu.</li>
+              <li><code>Command+Enter</code> or <code>Ctrl+Enter</code>: copy the selected prompt.</li>
+              <li><code>Shift+Enter</code>: keep the typed command and append the prompt.</li>
+              <li><code>Escape</code>: close the helper.</li>
+            </ul>
+          </div>
+        </div>
+        <div class="grid" style="margin-top: 16px">
+          <div class="card">
+            <h3>Versions</h3>
+            <p>Saves create immutable prompt versions unless the edit is marked as minor. The version rail can set defaults, restore old content as latest, delete older entries, and compare versions line by line.</p>
+          </div>
+          <div class="card">
+            <h3>Variants</h3>
+            <p>Variants are intentional alternatives. A suffix such as <code>short</code> can be selected with a command like <code>;;paper:short</code>.</p>
+          </div>
+          <div class="card">
+            <h3>Placeholders</h3>
+            <p>Tokens like <code>{{paper_text}}</code> are detected and tracked as metadata. Current insertion preserves them exactly as saved.</p>
+          </div>
+        </div>
+      </section>
+
+      <section id="configuration">
+        <div class="section-head">
+          <div>
+            <h2>Configuration And Data</h2>
+            <p>The manager exposes the settings that matter during normal use. There are no required environment variables for local development or extension runtime.</p>
+          </div>
+        </div>
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th>Setting or data</th>
+                <th>Default</th>
+                <th>Where it lives</th>
+                <th>Notes</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td>Trigger</td>
+                <td><code>;;</code></td>
+                <td><code>chrome.storage.local</code></td>
+                <td>Used by the content script command parser.</td>
+              </tr>
+              <tr>
+                <td>Insertion mode</td>
+                <td><code>prefer-direct</code></td>
+                <td><code>chrome.storage.local</code></td>
+                <td>Can prefer direct insertion, always copy, or ask every time.</td>
+              </tr>
+              <tr>
+                <td>Theme</td>
+                <td><code>system</code></td>
+                <td><code>chrome.storage.local</code></td>
+                <td>The manager follows system, light, or dark mode.</td>
+              </tr>
+              <tr>
+                <td>Prompt library</td>
+                <td>Seed prompts on first run</td>
+                <td>IndexedDB database <code>PromptDeckDB</code></td>
+                <td>Stored through Dexie with prompt indexes and migrations.</td>
+              </tr>
+              <tr>
+                <td>Backup files</td>
+                <td>Manual export</td>
+                <td>User-selected JSON files</td>
+                <td>Contain prompt text, versions, variants, and settings.</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </section>
+
+      <section id="architecture">
+        <div class="section-head">
+          <div>
+            <h2>Architecture</h2>
+            <p>The codebase is a Vite and React extension with a service worker boundary, content script insertion layer, local storage repository, and shared domain services.</p>
+          </div>
+        </div>
+        <div class="grid">
+          <div class="card">
+            <h3>Runtime boundary</h3>
+            <p><code>src/background/index.ts</code> validates runtime messages and performs prompt and settings operations through repository services.</p>
+          </div>
+          <div class="card">
+            <h3>Content script</h3>
+            <p><code>src/content/</code> detects commands in active editables, renders the helper in shadow DOM, searches prompts, and inserts or copies resolved content.</p>
+          </div>
+          <div class="card">
+            <h3>Manager UI</h3>
+            <p><code>src/options/</code> contains the React dashboard for prompt editing, settings, backups, import previews, versions, variants, and Markdown export.</p>
+          </div>
+          <div class="card">
+            <h3>Storage</h3>
+            <p><code>src/shared/storage/</code> uses Dexie for prompts and migrations. Settings use a small service around <code>chrome.storage.local</code>.</p>
+          </div>
+          <div class="card">
+            <h3>Search</h3>
+            <p><code>src/shared/search/fuzzySearch.ts</code> ranks by exact aliases, title, tags, fuzzy matches, favorites, recency, usage, and host-specific use.</p>
+          </div>
+          <div class="card">
+            <h3>Backups</h3>
+            <p><code>src/shared/backup/</code> defines backup schema, validation, migration, import planning, conflict handling, and apply modes.</p>
+          </div>
+        </div>
+      </section>
+
+      <section id="development">
+        <div class="section-head">
+          <div>
+            <h2>Development Workflow</h2>
+            <p>Use the Vite dev server for UI iteration, but use built extension output for realistic content script and service worker testing.</p>
+          </div>
+        </div>
+        <div class="two-col">
+          <div class="card">
+            <h3>Common commands</h3>
+            <pre><code>npm run dev
+npm run typecheck
+npm test
+npm run build
+npm run test:e2e
+npm run package:chrome</code></pre>
+            <p><code>npm run test:e2e</code> requires <code>dist/manifest.json</code>, so build first.</p>
+          </div>
+          <div class="card">
+            <h3>Package policy</h3>
+            <p>The Chrome packaging script validates Manifest V3, exact permissions, missing package files, and remote script references before creating <code>promptdeck-chrome-extension.zip</code>.</p>
+            <p>Required permissions are intentionally limited to <code>storage</code> and <code>clipboardWrite</code>.</p>
+          </div>
+        </div>
+      </section>
+
+      <section id="troubleshooting">
+        <div class="section-head">
+          <div>
+            <h2>Troubleshooting</h2>
+            <p>Most issues come from extension reload state, restricted browser pages, command collisions, or editor-specific insertion behavior.</p>
+          </div>
+        </div>
+        <div class="grid">
+          <div class="card">
+            <h3>Helper does not open</h3>
+            <p>Check the configured trigger, refresh the page after reloading the extension, avoid <code>chrome://</code> pages, and confirm the current host is not disabled.</p>
+          </div>
+          <div class="card">
+            <h3>Prompt copies instead of inserts</h3>
+            <p>Some rich editors reject synthetic edits. PromptDeck falls back to clipboard and supports an insertion setting for direct, copy-only, or ask-every-time behavior.</p>
+          </div>
+          <div class="card">
+            <h3>Save reports a collision</h3>
+            <p>Commands and aliases must be unique across prompts. Choose a different command or remove the conflicting alias.</p>
+          </div>
+        </div>
+        <p class="note" style="margin-top: 16px">
+          Data is tied to the current browser profile. Export JSON backups before clearing browser data, uninstalling the extension, or changing profiles.
+        </p>
+      </section>
+
+      <section id="more">
+        <div class="section-head">
+          <div>
+            <h2>More Project Docs</h2>
+            <p>The repository includes focused docs for contribution, privacy, security, release notes, and future work.</p>
+          </div>
+        </div>
+        <div class="grid">
+          <a class="card" href="CONTRIBUTING.md">
+            <h3>Contributing</h3>
+            <p>Setup, quality checks, code style, storage guidance, and pull request expectations.</p>
+          </a>
+          <a class="card" href="PRIVACY.md">
+            <h3>Privacy</h3>
+            <p>Data storage, local-first behavior, permissions, backups, and user caution.</p>
+          </a>
+          <a class="card" href="SECURITY.md">
+            <h3>Security</h3>
+            <p>Vulnerability reporting, sensitive areas, and current security posture.</p>
+          </a>
+          <a class="card" href="ROADMAP.md">
+            <h3>Roadmap</h3>
+            <p>Reliability, provider support, prompt management, import/export, accessibility, and testing notes.</p>
+          </a>
+          <a class="card" href="CHANGELOG.md">
+            <h3>Changelog</h3>
+            <p>Release preparation notes and notable changes.</p>
+          </a>
+          <a class="card" href="LICENSE">
+            <h3>License</h3>
+            <p>MIT license terms.</p>
+          </a>
+        </div>
+      </section>
+    </main>
+
+    <footer class="footer">
+      <div class="footer-inner">PromptDeck documentation. Generated from the repository's current source, scripts, and policy files.</div>
+    </footer>
+  </body>
+</html>
