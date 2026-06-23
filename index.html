@@ -405,6 +405,7 @@
         </a>
         <nav aria-label="Documentation sections">
           <a href="#quick-start">Quick Start</a>
+          <a href="#surfaces">Surfaces</a>
           <a href="#usage">Usage</a>
           <a href="#architecture">Architecture</a>
           <a href="#development">Development</a>
@@ -419,7 +420,7 @@
           <span class="eyebrow">Local-first prompt command center</span>
           <h1>PromptDeck keeps reusable AI prompts one trigger away.</h1>
           <p class="lead">
-            Save prompts locally, search them from browser text fields with <code>;;</code>, insert the selected prompt, and manage versions, variants, backups, and settings from a focused dashboard. This repo currently ships the browser extension while keeping the product direction open for terminals, editors, and other prompt surfaces.
+            Save prompts locally and reach them where you work: the browser extension's <code>;;</code> helper, a terminal CLI, a VS Code extension, and clipboard access for native desktop apps. One prompt model, one backup format, no account or cloud.
           </p>
           <div class="actions">
             <a class="button primary" href="#quick-start">Get started</a>
@@ -465,6 +466,52 @@ npm run build</code></pre>
             </ul>
             <p>After rebuilding locally, reload the extension in <code>chrome://extensions</code> and refresh pages where PromptDeck should run.</p>
           </div>
+        </div>
+      </section>
+
+      <section id="surfaces">
+        <div class="section-head">
+          <div>
+            <h2>Surfaces</h2>
+            <p>PromptDeck runs across four surfaces that share one prompt model and one backup format. The browser uses IndexedDB; the CLI and VS Code share a local JSON file (default <code>~/.promptdeck/library.json</code>). Backups bridge the two.</p>
+          </div>
+        </div>
+        <div class="grid">
+          <div class="card">
+            <h3>Browser extension</h3>
+            <p>The <code>;;</code> autocomplete helper on editable fields, plus the manager UI for prompts, versions, variants, settings, and backups.</p>
+            <pre><code>npm install
+npm run build      # load dist/ as an unpacked extension</code></pre>
+          </div>
+          <div class="card">
+            <h3>Terminal CLI</h3>
+            <p>Search, print, and copy prompts from the command line. <code>--json</code> output and stable exit codes make it scriptable for coding agents.</p>
+            <pre><code>npm run build:cli &amp;&amp; npm link
+promptdeck search refactor --json
+promptdeck print /paper-reading:short
+promptdeck copy /commit-message</code></pre>
+          </div>
+          <div class="card">
+            <h3>VS Code extension</h3>
+            <p>Search, insert, and copy prompts through the Command Palette and Quick Pick, including variant and version picks.</p>
+            <pre><code>cd extensions/vscode
+npm run build      # then press F5 to launch</code></pre>
+          </div>
+          <div class="card">
+            <h3>Native desktop / clipboard</h3>
+            <p>Copy a resolved prompt and paste into any native app (ChatGPT Desktop, Claude Desktop, editors). Bind to a global shortcut or launcher.</p>
+            <pre><code>promptdeck copy /paper-reading:short
+promptdeck pick    # interactive search + copy</code></pre>
+          </div>
+        </div>
+        <div class="card" style="margin-top: 16px">
+          <h3>One library across surfaces</h3>
+          <p>The browser and file stores are separate by design, but the same backup format bridges them. The CLI and VS Code extension already share <code>~/.promptdeck/library.json</code>.</p>
+          <pre><code># Seed the file store from a browser backup
+promptdeck import ~/Downloads/promptdeck-backup.json --mode merge-update
+
+# Export the file store as a browser-compatible backup
+promptdeck export promptdeck-from-cli.json</code></pre>
         </div>
       </section>
 
@@ -548,10 +595,16 @@ npm run build</code></pre>
                 <td>The manager follows system, light, or dark mode.</td>
               </tr>
               <tr>
-                <td>Prompt library</td>
+                <td>Prompt library (browser)</td>
                 <td>Seed prompts on first run</td>
                 <td>IndexedDB database <code>PromptDeckDB</code></td>
                 <td>Stored through Dexie with prompt indexes and migrations.</td>
+              </tr>
+              <tr>
+                <td>Prompt library (CLI / VS Code)</td>
+                <td>Seed prompts on first run</td>
+                <td><code>~/.promptdeck/library.json</code></td>
+                <td>Override with <code>PROMPTDECK_LIBRARY</code> or <code>PROMPTDECK_HOME</code>; respects <code>XDG_DATA_HOME</code> and <code>%APPDATA%</code>.</td>
               </tr>
               <tr>
                 <td>Backup files</td>

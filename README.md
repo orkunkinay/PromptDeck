@@ -6,9 +6,14 @@
 
 PromptDeck is a local-first prompt command center for storing reusable AI prompts and making them available where people work.
 
-This repository currently ships PromptDeck as a Chrome/browser extension. The product direction is broader than the browser: the goal is a durable local prompt library that can later be used from places such as terminal tools, editors, VS Code, and native AI apps without changing the local-first trust model.
+PromptDeck now ships across four surfaces that all share one prompt model and the same backup format:
 
-Today, PromptDeck is built for people who reuse serious prompts across tools such as ChatGPT, Claude, Gemini, local AI frontends, and other web apps with text composers. It keeps the prompt library in the user's browser profile, provides a compact `;;` autocomplete helper on editable fields, and includes a manager UI for editing prompts, versions, variants, settings, and backups.
+1. **Browser extension** — a Chrome/Manifest V3 extension with a `;;` autocomplete helper and a manager UI.
+2. **Terminal CLI** — search, print, and copy prompts from the command line, with JSON output for scripts and coding agents.
+3. **VS Code extension** — search, insert, and copy prompts through the Command Palette and Quick Pick.
+4. **Native desktop / clipboard** — copy a resolved prompt to the system clipboard from the CLI, ready to paste into any native app (ChatGPT Desktop, Claude Desktop, editors, etc.).
+
+The browser extension keeps its library in the browser profile (IndexedDB). The CLI and VS Code extension share a local-first JSON file store (default `~/.promptdeck/library.json`). Backups bridge the two: a browser backup can seed the file store, and the file store can export a browser-compatible backup. No account, cloud, telemetry, or backend is involved on any surface.
 
 For a visual documentation page, open [index.html](index.html) directly in a browser.
 
@@ -107,6 +112,132 @@ Common insertion shortcuts while the helper is open:
 
 Variants and versions can be addressed with suffixes. For example, `;;paper:short` resolves a variant named or suffixed `short`; `;;paper:v2` resolves version `v2`. If no suffix matches, PromptDeck uses the prompt's default version.
 
+## Terminal CLI
+
+The CLI reads and writes a local JSON library at `~/.promptdeck/library.json`
+(override with `PROMPTDECK_LIBRARY` for an explicit file or `PROMPTDECK_HOME`
+for a data directory; `XDG_DATA_HOME` and `%APPDATA%` are also respected). The
+file is created and seeded with example prompts on first use. Search reuses the
+same fuzzy ranking as the browser, and variant/version suffixes resolve the same
+way (`paper:short`, `paper:v2`).
+
+Build and link the CLI:
+
+```bash
+npm install
+npm run build:cli        # bundles bin/promptdeck.mjs
+npm link                 # exposes the `promptdeck` command (or: node bin/promptdeck.mjs ...)
+```
+
+During development you can also run it without building via `npm run cli -- <args>`.
+
+Commands:
+
+```bash
+promptdeck list
+promptdeck search <query>
+promptdeck show <command-or-id>[:variant-or-version]
+promptdeck copy <command-or-id>[:variant-or-version]
+promptdeck print <command-or-id>[:variant-or-version]
+promptdeck import <backup.json> [--mode merge-safe|merge-update|replace]
+promptdeck export [output.json]        # "-" or no path writes to stdout
+promptdeck pick                        # interactive terminal search + copy
+promptdeck doctor
+```
+
+Examples:
+
+```bash
+promptdeck search refactor --json
+promptdeck print /paper-reading:short
+promptdeck copy /commit-message
+promptdeck export - > backup.json
+```
+
+- `--json` gives machine-readable output for `list`, `search`, `show`, and `doctor`.
+- `print` writes raw prompt content to stdout for pipes and coding agents.
+- `copy` writes to the system clipboard (`pbcopy` on macOS, `clip` on Windows,
+  `wl-copy`/`xclip`/`xsel` on Linux) and falls back with a clear message when no
+  clipboard tool is available.
+- `doctor` reports the storage path, prompt count, schema version, and clipboard
+  availability.
+- Exit codes: `0` success, `1` usage/error, `2` not found, `3` clipboard unavailable.
+
+## VS Code Extension
+
+The VS Code extension lives in [`extensions/vscode`](extensions/vscode) and uses
+the same shared core and local file store as the CLI.
+
+```bash
+npm install              # repo root, once
+cd extensions/vscode
+npm run build            # bundles dist/extension.js with esbuild
+```
+
+Open the `extensions/vscode` folder in VS Code and press `F5` to launch an
+Extension Development Host. To package a `.vsix`, run `npm install` inside
+`extensions/vscode`, then `npm run build` and `npx @vscode/vsce package`. See
+[extensions/vscode/README.md](extensions/vscode/README.md) for details.
+
+Commands (Command Palette):
+
+- **PromptDeck: Search Prompt** — search, then Insert / Copy / Show.
+- **PromptDeck: Insert Prompt** — insert at the cursor or replace the selection.
+- **PromptDeck: Copy Prompt** — copy resolved content to the clipboard.
+- **PromptDeck: Import Backup** / **Export Backup** — bridge with PromptDeck backups.
+- **PromptDeck: Open Library File** — open `library.json`.
+
+The Quick Pick lists each prompt plus every addressable variant and non-default
+version. Override the library path per-workspace with the `promptdeck.libraryPath`
+setting.
+
+## Coding Agents And Automation
+
+The CLI is the machine-readable surface for editors and coding agents:
+
+- `--json` for `search`/`list`/`show` returns structured records.
+- `print` and `copy` are non-interactive and pipe-friendly.
+- Commands avoid prompts unless you explicitly run the interactive `pick`.
+- Stable exit codes and `stderr` messages suit scripting.
+
+```bash
+promptdeck search refactor --json | jq '.[0].command'
+promptdeck print /coding-agent-prod:prod | pbcopy
+```
+
+## Native Desktop / Clipboard Access
+
+For native apps (ChatGPT Desktop, Claude Desktop, other editors), copy a prompt
+to the clipboard and paste it:
+
+```bash
+promptdeck copy /paper-reading:short      # then paste anywhere
+promptdeck pick                           # interactive search, copies on select
+```
+
+Bind these to a global shortcut or launcher for system-wide access, for example:
+
+- **macOS**: an Automator "Quick Action" or a Raycast/Alfred script command running `promptdeck pick`.
+- **Linux**: a desktop keybinding that runs `promptdeck pick` in a terminal, or `promptdeck copy <command>`.
+- **Windows**: a shortcut or AutoHotkey binding that runs `promptdeck copy <command>`.
+
+## Using One Library Across Surfaces
+
+The browser and the CLI/VS Code surfaces use separate stores by design (browser
+IndexedDB vs. a local JSON file), but the same backup format bridges them:
+
+```bash
+# Seed the file store from a browser backup (exported from the manager UI)
+promptdeck import ~/Downloads/promptdeck-backup-2026-01-01.json --mode merge-update
+
+# Export the file store as a browser-compatible backup to import back in the manager
+promptdeck export promptdeck-from-cli.json
+```
+
+The CLI and VS Code extension already share the same `~/.promptdeck/library.json`,
+so a prompt copied in the terminal and one inserted in VS Code come from the same
+place.
+
 ## Data And Privacy
 
 PromptDeck is local-first:
@@ -138,9 +269,15 @@ npm test                 # Run Vitest unit tests
 npm run test:e2e         # Run Playwright extension smoke tests; requires dist/
 npm run build            # Build the unpacked extension into dist/
 npm run build:debug      # Build dist/ with sourcemaps and readable output
+npm run build:cli        # Bundle the terminal CLI into bin/promptdeck.mjs
+npm run cli -- <args>    # Run the CLI from source without building
 npm run package:chrome   # Build and zip the Chrome extension package
 npm run validate:package # Validate an existing dist/ package policy
 ```
+
+The CLI and VS Code core live under `src/core` (the platform-neutral file store
+and library) and reuse the same `src/shared` logic as the browser extension, so
+unit tests for all surfaces run under the same `npm test`.
 
 For realistic extension testing, prefer `npm run build` and load `dist/` as an unpacked extension. The Vite dev server is useful for UI work, but content scripts and service worker behavior are closest to production through the built extension.
 
@@ -154,6 +291,8 @@ src/
   content/                 Trigger detection, helper UI, editor insertion, clipboard fallback
   options/                 React prompt manager, settings, backups, versions, variants
   popup/                   Browser action popup
+  cli/                     Terminal CLI entrypoint, argument parsing, command runner
+  core/                    Platform-neutral file store, library façade, token resolution, clipboard
   shared/
     backup/                Backup schema, validation, preview, conflict handling, import plans
     importExport/          JSON and Markdown import/export helpers
@@ -166,7 +305,8 @@ src/
     versioning/            Version, variant, restore, diff, and resolution logic
   tests/                   Vitest coverage for core behavior
 tests/e2e/                 Playwright extension smoke tests
-scripts/                   Chrome package validation and zip creation
+extensions/vscode/         VS Code extension (commands, Quick Pick, esbuild bundle)
+scripts/                   Chrome package validation, zip creation, CLI bundling
 public/                    Icons, logo, screenshots, and demo media copied into builds
 ```
 

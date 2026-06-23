@@ -1,0 +1,45 @@
+{
+  "name": "promptdeck-vscode",
+  "displayName": "PromptDeck",
+  "description": "Local-first prompt library inside VS Code — search, insert, and copy reusable prompts from the same library as the PromptDeck CLI.",
+  "version": "0.1.0",
+  "license": "MIT",
+  "publisher": "promptdeck",
+  "engines": {
+    "vscode": "^1.85.0"
+  },
+  "categories": ["Other"],
+  "main": "./dist/extension.js",
+  "activationEvents": [],
+  "contributes": {
+    "commands": [
+      { "command": "promptdeck.searchPrompt", "title": "PromptDeck: Search Prompt" },
+      { "command": "promptdeck.insertPrompt", "title": "PromptDeck: Insert Prompt" },
+      { "command": "promptdeck.copyPrompt", "title": "PromptDeck: Copy Prompt" },
+      { "command": "promptdeck.importBackup", "title": "PromptDeck: Import Backup" },
+      { "command": "promptdeck.exportBackup", "title": "PromptDeck: Export Backup" },
+      { "command": "promptdeck.openLibraryFile", "title": "PromptDeck: Open Library File" }
+    ],
+    "configuration": {
+      "title": "PromptDeck",
+      "properties": {
+        "promptdeck.libraryPath": {
+          "type": "string",
+          "default": "",
+          "description": "Absolute path to the PromptDeck library file. Leave empty to use the default (~/.promptdeck/library.json or PROMPTDECK_LIBRARY/PROMPTDECK_HOME)."
+        }
+      }
+    }
+  },
+  "scripts": {
+    "build": "node scripts/build.mjs",
+    "watch": "node scripts/build.mjs --watch",
+    "vscode:prepublish": "node scripts/build.mjs"
+  },
+  "devDependencies": {
+    "@types/node": "^20.19.40",
+    "@types/vscode": "^1.85.0",
+    "esbuild": "^0.21.5",
+    "typescript": "^5.4.5"
+  }
+}
