@@ -94,6 +94,52 @@ describe("cli run", () => {
     expect(usage).toBe(1);
   });
 
+  it("leaves placeholders raw when no variables are provided", async () => {
+    const h = makeHarness();
+    await run(["print", "paper:short"], h.io);
+    expect(h.out.join("\n")).toContain("{{paper_text}}");
+  });
+
+  it("compiles placeholders from --var", async () => {
+    const h = makeHarness();
+    const code = await run(["print", "paper:short", "--var", "paper_text=HELLO WORLD"], h.io);
+    expect(code).toBe(EXIT_OK);
+    const out = h.out.join("\n");
+    expect(out).toContain("HELLO WORLD");
+    expect(out).not.toContain("{{paper_text}}");
+  });
+
+  it("compiles placeholders from a --vars JSON file", async () => {
+    const varsPath = path.join(tmpDir, "vars.json");
+    fs.writeFileSync(varsPath, JSON.stringify({ paper_text: "FROM FILE" }));
+    const h = makeHarness();
+    await run(["copy", "paper:short", "--vars", varsPath], h.io);
+    expect(h.clipboard.text).toContain("FROM FILE");
+    expect(h.clipboard.text).not.toContain("{{paper_text}}");
+  });
+
+  it("warns but succeeds when a required variable is left unfilled", async () => {
+    const h = makeHarness();
+    const code = await run(["print", "paper:short", "--var", "unused=1"], h.io);
+    expect(code).toBe(EXIT_OK);
+    expect(h.err.join("\n")).toContain("unfilled variables");
+    expect(h.err.join("\n")).toContain("paper_text");
+  });
+
+  it("fails under --strict when a required variable is missing", async () => {
+    const h = makeHarness();
+    const code = await run(["print", "paper:short", "--var", "unused=1", "--strict"], h.io);
+    expect(code).toBe(1);
+    expect(h.err.join("\n")).toContain("Missing required variables");
+  });
+
+  it("rejects a malformed --var", async () => {
+    const h = makeHarness();
+    const code = await run(["print", "paper:short", "--var", "noequals"], h.io);
+    expect(code).toBe(1);
+    expect(h.err.join("\n")).toContain("Use --var name=value");
+  });
+
   it("returns not-found exit code for unknown tokens", async () => {
     const h = makeHarness();
     const code = await run(["print", "does-not-exist"], h.io);

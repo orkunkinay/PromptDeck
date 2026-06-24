@@ -3,6 +3,8 @@ import type { Prompt } from "../shared/models/prompt";
 import type { ImportMode } from "../shared/backup";
 import { PromptLibrary } from "../core/library";
 import { clipboardAvailable as defaultClipboardAvailable, copyToClipboard, type ClipboardResult } from "../core/clipboard";
+import { compilePrompt } from "../shared/promptCompiler/compiler";
+import type { TokenResolution } from "../core/resolve";
 import { flagBool, flagString, parseArgs } from "./args";
 
 export const VERSION = "0.1.0";
@@ -48,6 +50,9 @@ Tokens:
 Options:
   --json                        Machine-readable JSON output (list, search, show, doctor).
   --limit <n>                   Limit search results.
+  --var name=value              Fill a {{placeholder}} (repeatable; copy/print).
+  --vars <file.json>            Fill placeholders from a JSON object of name/value pairs.
+  --strict                      Fail if required placeholders are left unfilled (copy/print).
   --mode <merge-safe|merge-update|replace>   Import strategy (default: merge-safe).
   --library <path>              Use a specific library file.
   -h, --help                    Show help.
@@ -83,6 +88,63 @@ function suffixHint(prompt: Prompt): string {
 
 function libraryFrom(io: CliIO, flags: Record<string, string | boolean>): PromptLibrary {
   return io.createLibrary(flagString(flags, "library"));
+}
+
+interface VariableValues {
+  values: Record<string, string>;
+  /** True when the user supplied any --var/--vars, so we should compile. */
+  provided: boolean;
+  error?: string;
+}
+
+/** Gather placeholder values from `--vars <file>` and repeated `--var name=value`. */
+function collectValues(io: CliIO, flags: Record<string, string | boolean>, lists: Record<string, string[]>): VariableValues {
+  const values: Record<string, string> = {};
+  let provided = false;
+
+  const varsFile = flagString(flags, "vars");
+  if (varsFile) {
+    let parsed: unknown;
+    try {
+      parsed = JSON.parse(io.readFile(varsFile));
+    } catch (error) {
+      return { values, provided, error: error instanceof Error ? error.message : `Could not read ${varsFile}.` };
+    }
+    if (!parsed || typeof parsed !== "object" || Array.isArray(parsed)) {
+      return { values, provided, error: `${varsFile} must contain a JSON object of name/value pairs.` };
+    }
+    for (const [key, value] of Object.entries(parsed as Record<string, unknown>)) {
+      values[key] = String(value);
+    }
+    provided = true;
+  }
+
+  for (const entry of lists.var || []) {
+    const eq = entry.indexOf("=");
+    if (eq === -1) {
+      return { values, provided, error: `Invalid --var "${entry}". Use --var name=value.` };
+    }
+    values[entry.slice(0, eq)] = entry.slice(eq + 1);
+    provided = true;
+  }
+
+  return { values, provided };
+}
+
+interface CompiledContent {
+  content: string;
+  missingRequired: string[];
+}
+
+/** Compile placeholders when values were provided; otherwise pass content through unchanged. */
+function compileResolved(resolution: TokenResolution, vars: VariableValues): CompiledContent {
+  if (!vars.provided) return { content: resolution.resolved.content, missingRequired: [] };
+  const result = compilePrompt({
+    content: resolution.resolved.content,
+    values: vars.values,
+    definitions: resolution.prompt.variables
+  });
+  return { content: result.compiled, missingRequired: result.missingRequired };
 }
 
 function cmdList(io: CliIO, flags: Record<string, string | boolean>): number {
@@ -168,7 +230,12 @@ function cmdShow(io: CliIO, positionals: string[], flags: Record<string, string 
   return EXIT_OK;
 }
 
-function cmdPrint(io: CliIO, positionals: string[], flags: Record<string, string | boolean>): number {
+function cmdPrint(
+  io: CliIO,
+  positionals: string[],
+  flags: Record<string, string | boolean>,
+  lists: Record<string, string[]>
+): number {
   const token = positionals[0];
   if (!token) {
     io.stderr("Usage: promptdeck print <command-or-id>[:variant-or-version]");
@@ -179,21 +246,37 @@ function cmdPrint(io: CliIO, positionals: string[], flags: Record<string, string
     io.stderr(`No prompt found for "${token}".`);
     return EXIT_NOT_FOUND;
   }
-  io.stdout(resolution.resolved.content);
+  const vars = collectValues(io, flags, lists);
+  if (vars.error) {
+    io.stderr(vars.error);
+    return EXIT_ERROR;
+  }
+  const { content, missingRequired } = compileResolved(resolution, vars);
+  if (missingRequired.length && flagBool(flags, "strict")) {
+    io.stderr(`Missing required variables: ${missingRequired.join(", ")}`);
+    return EXIT_ERROR;
+  }
+  if (missingRequired.length) io.stderr(`Warning: unfilled variables: ${missingRequired.join(", ")}`);
+  io.stdout(content);
   return EXIT_OK;
 }
 
-function copyResolved(io: CliIO, library: PromptLibrary, token: string): number {
+function copyResolved(io: CliIO, library: PromptLibrary, token: string, vars?: VariableValues, strict = false): number {
   const resolution = library.resolve(token);
   if (!resolution) {
     io.stderr(`No prompt found for "${token}".`);
     return EXIT_NOT_FOUND;
   }
+  const { content, missingRequired } = compileResolved(resolution, vars || { values: {}, provided: false });
+  if (missingRequired.length && strict) {
+    io.stderr(`Missing required variables: ${missingRequired.join(", ")}`);
+    return EXIT_ERROR;
+  }
   if (!io.clipboardAvailable()) {
     io.stderr("Clipboard is not available. Use `promptdeck print` to write to stdout instead.");
     return EXIT_CLIPBOARD;
   }
-  const result = io.copy(resolution.resolved.content);
+  const result = io.copy(content);
   if (!result.ok) {
     io.stderr(result.reason || "Failed to copy to clipboard.");
     return EXIT_CLIPBOARD;
@@ -201,16 +284,27 @@ function copyResolved(io: CliIO, library: PromptLibrary, token: string): number 
   library.recordUsage(resolution.prompt.id);
   const label = resolution.resolved.suffix ? `${resolution.prompt.command}:${resolution.resolved.suffix}` : resolution.prompt.command;
   io.stderr(`Copied ${label} to the clipboard.`);
+  if (missingRequired.length) io.stderr(`Warning: unfilled variables: ${missingRequired.join(", ")}`);
   return EXIT_OK;
 }
 
-function cmdCopy(io: CliIO, positionals: string[], flags: Record<string, string | boolean>): number {
+function cmdCopy(
+  io: CliIO,
+  positionals: string[],
+  flags: Record<string, string | boolean>,
+  lists: Record<string, string[]>
+): number {
   const token = positionals[0];
   if (!token) {
     io.stderr("Usage: promptdeck copy <command-or-id>[:variant-or-version]");
     return EXIT_ERROR;
   }
-  return copyResolved(io, libraryFrom(io, flags), token);
+  const vars = collectValues(io, flags, lists);
+  if (vars.error) {
+    io.stderr(vars.error);
+    return EXIT_ERROR;
+  }
+  return copyResolved(io, libraryFrom(io, flags), token, vars, flagBool(flags, "strict"));
 }
 
 function cmdImport(io: CliIO, positionals: string[], flags: Record<string, string | boolean>): number {
@@ -295,7 +389,10 @@ async function cmdPick(io: CliIO, flags: Record<string, string | boolean>): Prom
 }
 
 export async function run(argv: string[], io: CliIO): Promise<number> {
-  const { positionals, flags } = parseArgs(argv, ["json", "help", "version", "yes"]);
+  const { positionals, flags, lists } = parseArgs(argv, {
+    booleans: ["json", "help", "version", "yes", "strict"],
+    arrays: ["var"]
+  });
   const command = positionals.shift();
 
   if (flagBool(flags, "version")) {
@@ -315,9 +412,9 @@ export async function run(argv: string[], io: CliIO): Promise<number> {
     case "show":
       return cmdShow(io, positionals, flags);
     case "copy":
-      return cmdCopy(io, positionals, flags);
+      return cmdCopy(io, positionals, flags, lists);
     case "print":
-      return cmdPrint(io, positionals, flags);
+      return cmdPrint(io, positionals, flags, lists);
     case "import":
       return cmdImport(io, positionals, flags);
     case "export":

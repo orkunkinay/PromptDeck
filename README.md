@@ -152,10 +152,20 @@ promptdeck search refactor --json
 promptdeck print /paper-reading:short
 promptdeck copy /commit-message
 promptdeck export - > backup.json
+
+# Fill {{placeholders}} when printing or copying:
+promptdeck print /paper-reading:short --var paper_text="$(cat paper.txt)"
+promptdeck print /paper-reading --vars vars.json --strict
 ```
 
 - `--json` gives machine-readable output for `list`, `search`, `show`, and `doctor`.
 - `print` writes raw prompt content to stdout for pipes and coding agents.
+- `--var name=value` (repeatable) and `--vars <file.json>` fill `{{placeholder}}`
+  tokens for `print` and `copy`. Without them, content is emitted verbatim with
+  placeholders intact. `--strict` exits non-zero if a required placeholder is
+  left unfilled.
+- The local library file is written atomically and with private `0600`
+  permissions, since it contains your prompt text.
 - `copy` writes to the system clipboard (`pbcopy` on macOS, `clip` on Windows,
   `wl-copy`/`xclip`/`xsel` on Linux) and falls back with a clear message when no
   clipboard tool is available.

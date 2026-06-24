@@ -57,6 +57,22 @@ describe("FileStore", () => {
     expect(reloaded.kind).toBe(LIBRARY_KIND);
   });
 
+  it("leaves no temp files behind after writing", () => {
+    const store = new FileStore({ path: path.join(tmpDir, "library.json") });
+    store.load();
+    store.write(createLibraryFile([]));
+    const leftovers = fs.readdirSync(tmpDir).filter((name) => name.endsWith(".tmp"));
+    expect(leftovers).toHaveLength(0);
+  });
+
+  it.skipIf(process.platform === "win32")("writes the library with private (0600) permissions", () => {
+    const file = path.join(tmpDir, "library.json");
+    const store = new FileStore({ path: file });
+    store.load();
+    const mode = fs.statSync(file).mode & 0o777;
+    expect(mode).toBe(0o600);
+  });
+
   it("throws on invalid JSON", () => {
     const file = path.join(tmpDir, "library.json");
     fs.writeFileSync(file, "{not json", "utf8");

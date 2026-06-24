@@ -1,6 +1,7 @@
 import * as vscode from "vscode";
-import { PromptLibrary } from "../../../src/core";
+import { PromptLibrary, compilePrompt, extractVariables, type ResolvedPromptContent } from "../../../src/core";
 import { buildPromptPicks, type PromptPick } from "./adapter";
+import type { TokenResolution } from "../../../src/core";
 
 function libraryPathFromConfig(): string | undefined {
   const configured = vscode.workspace.getConfiguration("promptdeck").get<string>("libraryPath");
@@ -10,6 +11,31 @@ function libraryPathFromConfig(): string | undefined {
 function openLibrary(): PromptLibrary {
   const libraryPath = libraryPathFromConfig();
   return new PromptLibrary(libraryPath ? { path: libraryPath } : {});
+}
+
+/**
+ * Resolve a token to final content, prompting the user for each `{{placeholder}}`
+ * via input boxes. Returns undefined if the user cancels an input. Prompts with
+ * no placeholders return their content unchanged.
+ */
+async function materializeContent(resolution: TokenResolution): Promise<string | undefined> {
+  const resolved: ResolvedPromptContent = resolution.resolved;
+  const names = extractVariables(resolved.content);
+  if (names.length === 0) return resolved.content;
+
+  const values: Record<string, string> = {};
+  for (const name of names) {
+    const definition = resolution.prompt.variables[name];
+    const input = await vscode.window.showInputBox({
+      title: `${resolution.prompt.title} — ${name}`,
+      prompt: `Value for {{${name}}}${definition?.required === false ? " (optional)" : ""}`,
+      value: definition?.defaultValue ?? "",
+      ignoreFocusOut: true
+    });
+    if (input === undefined) return undefined; // cancelled
+    values[name] = input;
+  }
+  return compilePrompt({ content: resolved.content, values, definitions: resolution.prompt.variables }).compiled;
 }
 
 async function pickPrompt(library: PromptLibrary, placeHolder: string): Promise<PromptPick | undefined> {
@@ -33,13 +59,14 @@ async function insertPrompt(): Promise<void> {
     vscode.window.showErrorMessage(`PromptDeck could not resolve "${picked.token}".`);
     return;
   }
+  const content = await materializeContent(resolution);
+  if (content === undefined) return;
   const editor = vscode.window.activeTextEditor;
   if (!editor) {
-    await vscode.env.clipboard.writeText(resolution.resolved.content);
+    await vscode.env.clipboard.writeText(content);
     vscode.window.showInformationMessage("No active editor — prompt copied to the clipboard instead.");
     return;
   }
-  const { content } = resolution.resolved;
   await editor.edit((builder) => {
     for (const selection of editor.selections) {
       if (selection.isEmpty) {
@@ -61,7 +88,9 @@ async function copyPrompt(): Promise<void> {
     vscode.window.showErrorMessage(`PromptDeck could not resolve "${picked.token}".`);
     return;
   }
-  await vscode.env.clipboard.writeText(resolution.resolved.content);
+  const content = await materializeContent(resolution);
+  if (content === undefined) return;
+  await vscode.env.clipboard.writeText(content);
   library.recordUsage(resolution.prompt.id);
   vscode.window.showInformationMessage(`Copied ${picked.label} to the clipboard.`);
 }
@@ -79,27 +108,30 @@ async function searchPrompt(): Promise<void> {
     vscode.window.showErrorMessage(`PromptDeck could not resolve "${picked.token}".`);
     return;
   }
-  if (action === "Copy to clipboard") {
-    await vscode.env.clipboard.writeText(resolution.resolved.content);
-    library.recordUsage(resolution.prompt.id);
-    vscode.window.showInformationMessage(`Copied ${picked.label} to the clipboard.`);
-    return;
-  }
   if (action === "Show content") {
+    // Show the raw template (with placeholders intact) for inspection.
     const doc = await vscode.workspace.openTextDocument({ content: resolution.resolved.content, language: "markdown" });
     await vscode.window.showTextDocument(doc, { preview: true });
     return;
   }
+  const content = await materializeContent(resolution);
+  if (content === undefined) return;
+  if (action === "Copy to clipboard") {
+    await vscode.env.clipboard.writeText(content);
+    library.recordUsage(resolution.prompt.id);
+    vscode.window.showInformationMessage(`Copied ${picked.label} to the clipboard.`);
+    return;
+  }
   const editor = vscode.window.activeTextEditor;
   if (!editor) {
-    await vscode.env.clipboard.writeText(resolution.resolved.content);
+    await vscode.env.clipboard.writeText(content);
     vscode.window.showInformationMessage("No active editor — prompt copied to the clipboard instead.");
     return;
   }
   await editor.edit((builder) => {
     for (const selection of editor.selections) {
-      if (selection.isEmpty) builder.insert(selection.active, resolution.resolved.content);
-      else builder.replace(selection, resolution.resolved.content);
+      if (selection.isEmpty) builder.insert(selection.active, content);
+      else builder.replace(selection, content);
     }
   });
   library.recordUsage(resolution.prompt.id);

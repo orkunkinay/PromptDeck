@@ -125,6 +125,27 @@ export class FileStore {
     const dir = path.dirname(this.path);
     fs.mkdirSync(dir, { recursive: true });
     const next: LibraryFile = { ...library, updatedAt: nowIso() };
-    fs.writeFileSync(this.path, `${JSON.stringify(next, null, 2)}\n`, "utf8");
+    const data = `${JSON.stringify(next, null, 2)}\n`;
+    // Write to a temp file in the same directory, then rename. rename() is
+    // atomic on the same filesystem, so a crash or a concurrent reader never
+    // sees a half-written library. The 0o600 mode keeps prompt text private.
+    const tmp = path.join(dir, `.${path.basename(this.path)}.${process.pid}.${Date.now().toString(36)}.tmp`);
+    try {
+      fs.writeFileSync(tmp, data, { encoding: "utf8", mode: 0o600 });
+      fs.renameSync(tmp, this.path);
+    } catch (error) {
+      try {
+        fs.rmSync(tmp, { force: true });
+      } catch {
+        // best-effort cleanup; surface the original error below
+      }
+      throw error;
+    }
+    // Ensure mode is tightened even when the file pre-existed with looser perms.
+    try {
+      fs.chmodSync(this.path, 0o600);
+    } catch {
+      // Some filesystems (e.g. on Windows) do not support chmod; ignore.
+    }
   }
 }

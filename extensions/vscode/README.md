@@ -20,6 +20,10 @@ The Quick Pick lists each prompt plus every addressable variant and non-default
 version (for example `/paper-reading` and `/paper-reading:short`), so you can
 pick a specific variant without typing a suffix.
 
+When a prompt contains `{{placeholder}}` tokens, Insert and Copy ask for each
+value via input boxes (prefilled with any default) and use the filled result.
+**Show content** displays the raw template with placeholders intact.
+
 ## Library location
 
 By default the extension reads `~/.promptdeck/library.json` (or the path from
