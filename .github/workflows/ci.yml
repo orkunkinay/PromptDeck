@@ -40,6 +40,21 @@ jobs:
       - name: Build extension
         run: npm run build
 
+      - name: Build CLI
+        run: npm run build:cli
+
+      - name: Install VS Code extension deps
+        run: npm ci
+        working-directory: extensions/vscode
+
+      - name: Typecheck VS Code extension
+        run: npm run typecheck
+        working-directory: extensions/vscode
+
+      - name: Build VS Code extension
+        run: npm run build
+        working-directory: extensions/vscode
+
       - name: Package and validate Chrome extension
         run: npm run package:chrome:dist
 

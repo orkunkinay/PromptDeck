@@ -32,11 +32,20 @@ Use this matrix for release checks after insertion adapter changes. A pass means
 
 ## System-Wide Prompt Access
 
-- Explore a companion terminal CLI for searching, printing, and copying prompts from the command line.
-- Explore desktop-wide prompt access for native LLM applications such as ChatGPT Desktop, Claude Desktop, and other local AI tools.
-- Explore integrations for developer environments, including VS Code, coding-agent extensions, and editor command palettes.
-- Keep browser extension usage fully supported while designing shared import/export or storage formats that could power non-browser clients.
-- Avoid adding account, backend, telemetry, or cloud requirements for system-wide usage.
+Shipped:
+
+- Terminal CLI (`promptdeck`) for listing, searching, showing, printing, and copying prompts, plus backup import/export and `doctor`. Reuses the shared fuzzy search and variant/version resolution.
+- A local-first JSON file store (default `~/.promptdeck/library.json`) shared by all non-browser surfaces, with backup bridges to and from the browser extension.
+- VS Code extension with Command Palette / Quick Pick search, insert, copy, and backup import/export.
+- Native desktop / clipboard access through `promptdeck copy` and the interactive `promptdeck pick`, bindable to OS shortcuts and launchers.
+- Machine-readable `--json` output and non-interactive commands for coding agents and editors.
+
+Still exploring:
+
+- Richer per-surface configuration and host/site preferences for the file store.
+- Optional deeper editor integrations (inline completion, snippets) beyond the command surface.
+- Keep browser extension usage fully supported; continue treating the backup format as the bridge between IndexedDB and the file store.
+- Continue avoiding account, backend, telemetry, or cloud requirements for system-wide usage.
 
 ## Prompt Library Management
 
