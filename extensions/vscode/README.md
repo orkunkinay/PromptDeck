@@ -52,6 +52,7 @@ with PromptDeck loaded. `npm run watch` rebuilds on change.
 ```bash
 cd extensions/vscode
 npm install            # installs @types/vscode, esbuild, typescript locally
+npm run typecheck      # tsc -p . (also runs in CI)
 npm run build
 npx @vscode/vsce package
 ```

@@ -303,7 +303,9 @@ npm run validate:package # Validate an existing dist/ package policy
 
 The CLI and VS Code core live under `src/core` (the platform-neutral file store
 and library) and reuse the same `src/shared` logic as the browser extension, so
-unit tests for all surfaces run under the same `npm test`.
+unit tests for all surfaces run under the same `npm test`. CI typechecks the
+root project and the VS Code extension, runs the unit suite, and builds the
+extension, the CLI bundle, and the VS Code bundle so none can silently break.
 
 For realistic extension testing, prefer `npm run build` and load `dist/` as an unpacked extension. The Vite dev server is useful for UI work, but content scripts and service worker behavior are closest to production through the built extension.
 
