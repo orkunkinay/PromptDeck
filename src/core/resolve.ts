@@ -27,18 +27,25 @@ function normalizeCommand(value: string): string {
 }
 
 /**
- * Find a single prompt by exact command, alias, or id, falling back to the best
- * fuzzy search match. Returns undefined when nothing matches at all.
+ * Find a prompt by exact command, alias, or id (case-insensitive). Used for
+ * destructive/addressing operations where fuzzy matching would be unsafe.
  */
-export function findPrompt(prompts: Prompt[], name: string): Prompt | undefined {
+export function findPromptExact(prompts: Prompt[], name: string): Prompt | undefined {
   const needle = normalizeCommand(name);
   if (!needle) return undefined;
-
-  const exact = prompts.find((prompt) => {
+  return prompts.find((prompt) => {
     if (normalizeCommand(prompt.command) === needle) return true;
     if (prompt.id.toLowerCase() === needle) return true;
     return prompt.aliases.some((alias) => normalizeCommand(alias) === needle);
   });
+}
+
+/**
+ * Find a single prompt by exact command, alias, or id, falling back to the best
+ * fuzzy search match. Returns undefined when nothing matches at all.
+ */
+export function findPrompt(prompts: Prompt[], name: string): Prompt | undefined {
+  const exact = findPromptExact(prompts, name);
   if (exact) return exact;
 
   const [best] = searchPrompts(prompts, name);

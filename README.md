@@ -139,7 +139,10 @@ promptdeck search <query>
 promptdeck show <command-or-id>[:variant-or-version]
 promptdeck copy <command-or-id>[:variant-or-version]
 promptdeck print <command-or-id>[:variant-or-version]
-promptdeck import <backup.json> [--mode merge-safe|merge-update|replace]
+promptdeck add <command> [--content <text> | --file <path>] [--title] [--tags a,b] [--alias x] [--desc]
+promptdeck edit <command-or-id> [--content | --file] [--title] [--tags] [--alias] [--desc] [--minor]
+promptdeck rm <command-or-id>
+promptdeck import <backup.json> [--mode merge-safe|merge-update|replace] [--dry-run]
 promptdeck export [output.json]        # "-" or no path writes to stdout
 promptdeck pick                        # interactive terminal search + copy
 promptdeck doctor
@@ -156,6 +159,12 @@ promptdeck export - > backup.json
 # Fill {{placeholders}} when printing or copying:
 promptdeck print /paper-reading:short --var paper_text="$(cat paper.txt)"
 promptdeck print /paper-reading --vars vars.json --strict
+
+# Create and edit prompts from the terminal:
+promptdeck add /commit-message --content "Write a conventional commit for:\n{{diff}}" --tags git
+git diff | promptdeck add /wip --file -
+promptdeck edit /commit-message --tags git,vcs --desc "Conventional commit"
+promptdeck import backup.json --dry-run        # preview before writing
 ```
 
 - `--json` gives machine-readable output for `list`, `search`, `show`, and `doctor`.
@@ -164,6 +173,13 @@ promptdeck print /paper-reading --vars vars.json --strict
   tokens for `print` and `copy`. Without them, content is emitted verbatim with
   placeholders intact. `--strict` exits non-zero if a required placeholder is
   left unfilled.
+- `add`/`edit` take prompt body from `--content <text>`, `--file <path>`, or
+  `--file -` (stdin). `add` and `edit` reject command/alias collisions; `edit`
+  creates a new version unless `--minor` is passed. `rm`/`edit` address prompts
+  by exact command, id, or alias (no fuzzy fallback, so they never touch the
+  wrong prompt).
+- `import --dry-run` prints the import plan (new / merged / unchanged /
+  conflicts) without writing; add `--json` for a machine-readable summary.
 - The local library file is written atomically and with private `0600`
   permissions, since it contains your prompt text.
 - `copy` writes to the system clipboard (`pbcopy` on macOS, `clip` on Windows,

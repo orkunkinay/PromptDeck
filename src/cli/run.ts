@@ -22,6 +22,8 @@ export interface CliIO {
   createLibrary(libraryPath?: string): PromptLibrary;
   readFile(filePath: string): string;
   writeFile(filePath: string, data: string): void;
+  /** Read all of stdin (used for `--file -`). */
+  readStdin(): string;
   /** Optional terminal picker; returns the selected token, or undefined if cancelled. */
   interactivePick?(library: PromptLibrary): Promise<string | undefined>;
   platform: NodeJS.Platform;
@@ -38,6 +40,9 @@ Commands:
   show <token>                  Show a prompt and its resolved content.
   copy <token>                  Copy resolved prompt content to the clipboard.
   print <token>                 Print resolved prompt content to stdout (pipe-friendly).
+  add <command>                 Create a new prompt (content via --content/--file/stdin).
+  edit <token>                  Update a prompt's metadata and/or content.
+  rm <command-or-id>            Delete a prompt.
   import <backup.json>          Import a PromptDeck backup into the local library.
   export [output.json]          Export the local library as a PromptDeck backup ("-" for stdout).
   pick                          Interactively search and copy a prompt.
@@ -53,6 +58,14 @@ Options:
   --var name=value              Fill a {{placeholder}} (repeatable; copy/print).
   --vars <file.json>            Fill placeholders from a JSON object of name/value pairs.
   --strict                      Fail if required placeholders are left unfilled (copy/print).
+  --content <text>              Prompt body for add/edit.
+  --file <path>                 Read the prompt body from a file ("-" for stdin) for add/edit.
+  --title <text>                Prompt title for add/edit.
+  --tags a,b,c                  Comma-separated tags for add/edit.
+  --alias <name>                Alias for add/edit (repeatable).
+  --desc <text>                 Description for add/edit.
+  --minor                       Edit the default version in place instead of versioning.
+  --dry-run                     Preview an import without writing.
   --mode <merge-safe|merge-update|replace>   Import strategy (default: merge-safe).
   --library <path>              Use a specific library file.
   -h, --help                    Show help.
@@ -145,6 +158,121 @@ function compileResolved(resolution: TokenResolution, vars: VariableValues): Com
     definitions: resolution.prompt.variables
   });
   return { content: result.compiled, missingRequired: result.missingRequired };
+}
+
+function splitList(value: string | undefined): string[] | undefined {
+  if (value === undefined) return undefined;
+  return value
+    .split(",")
+    .map((item) => item.trim())
+    .filter(Boolean);
+}
+
+interface ContentArg {
+  content?: string;
+  error?: string;
+}
+
+/** Resolve prompt body from --content, --file <path>, or --file - (stdin). */
+function readContentArg(io: CliIO, flags: Record<string, string | boolean>): ContentArg {
+  const inline = flagString(flags, "content");
+  const file = flagString(flags, "file");
+  if (inline !== undefined && file !== undefined) {
+    return { error: "Use either --content or --file, not both." };
+  }
+  if (inline !== undefined) return { content: inline };
+  if (file !== undefined) {
+    try {
+      return { content: file === "-" ? io.readStdin() : io.readFile(file) };
+    } catch (error) {
+      return { error: error instanceof Error ? error.message : `Could not read ${file}.` };
+    }
+  }
+  return {};
+}
+
+function cmdAdd(
+  io: CliIO,
+  positionals: string[],
+  flags: Record<string, string | boolean>,
+  lists: Record<string, string[]>
+): number {
+  const command = positionals[0];
+  if (!command) {
+    io.stderr("Usage: promptdeck add <command> [--content <text> | --file <path>] [--title] [--tags a,b] [--alias x] [--desc]");
+    return EXIT_ERROR;
+  }
+  const { content, error } = readContentArg(io, flags);
+  if (error) {
+    io.stderr(error);
+    return EXIT_ERROR;
+  }
+  try {
+    const prompt = libraryFrom(io, flags).addPrompt({
+      command,
+      title: flagString(flags, "title"),
+      tags: splitList(flagString(flags, "tags")),
+      aliases: lists.alias,
+      description: flagString(flags, "desc"),
+      content
+    });
+    io.stderr(`Added ${prompt.command} (${prompt.id}).`);
+    return EXIT_OK;
+  } catch (err) {
+    io.stderr(err instanceof Error ? err.message : "Could not add the prompt.");
+    return EXIT_ERROR;
+  }
+}
+
+function cmdEdit(
+  io: CliIO,
+  positionals: string[],
+  flags: Record<string, string | boolean>,
+  lists: Record<string, string[]>
+): number {
+  const token = positionals[0];
+  if (!token) {
+    io.stderr("Usage: promptdeck edit <command-or-id> [--content <text> | --file <path>] [--title] [--tags] [--alias] [--desc] [--minor]");
+    return EXIT_ERROR;
+  }
+  const { content, error } = readContentArg(io, flags);
+  if (error) {
+    io.stderr(error);
+    return EXIT_ERROR;
+  }
+  try {
+    const prompt = libraryFrom(io, flags).updatePrompt(token, {
+      title: flagString(flags, "title"),
+      description: flagString(flags, "desc"),
+      tags: splitList(flagString(flags, "tags")),
+      aliases: lists.alias,
+      content,
+      minor: flagBool(flags, "minor")
+    });
+    io.stderr(`Updated ${prompt.command} (${prompt.id}).`);
+    return EXIT_OK;
+  } catch (err) {
+    const message = err instanceof Error ? err.message : "Could not edit the prompt.";
+    io.stderr(message);
+    return message.startsWith("No prompt found") ? EXIT_NOT_FOUND : EXIT_ERROR;
+  }
+}
+
+function cmdRemove(io: CliIO, positionals: string[], flags: Record<string, string | boolean>): number {
+  const token = positionals[0];
+  if (!token) {
+    io.stderr("Usage: promptdeck rm <command-or-id>");
+    return EXIT_ERROR;
+  }
+  try {
+    const removed = libraryFrom(io, flags).removePrompt(token);
+    io.stderr(`Removed ${removed.command} (${removed.id}).`);
+    return EXIT_OK;
+  } catch (err) {
+    const message = err instanceof Error ? err.message : "Could not remove the prompt.";
+    io.stderr(message);
+    return message.startsWith("No prompt found") ? EXIT_NOT_FOUND : EXIT_ERROR;
+  }
 }
 
 function cmdList(io: CliIO, flags: Record<string, string | boolean>): number {
@@ -325,8 +453,34 @@ function cmdImport(io: CliIO, positionals: string[], flags: Record<string, strin
     io.stderr(error instanceof Error ? error.message : `Could not read ${file}.`);
     return EXIT_ERROR;
   }
+
+  const library = libraryFrom(io, flags);
+
+  if (flagBool(flags, "dry-run")) {
+    try {
+      const { plan, warnings } = library.planImport(raw);
+      const summary = plan.summary;
+      if (flagBool(flags, "json")) {
+        io.stdout(JSON.stringify({ mode, ...summary }, null, 2));
+        return EXIT_OK;
+      }
+      io.stdout(`Dry run (${mode}) — no changes written:`);
+      io.stdout(`  prompts in backup:        ${summary.promptCount}`);
+      io.stdout(`  new:                      ${summary.newPromptCount}`);
+      io.stdout(`  merged (added versions):  ${summary.mergedPromptCount}`);
+      io.stdout(`  unchanged:                ${summary.unchangedPromptCount}`);
+      io.stdout(`  conflicts:                ${summary.conflictCount}`);
+      io.stdout(`  conflicts newer locally:  ${summary.newerLocalCount}`);
+      warnings.forEach((warning) => io.stderr(`Warning: ${warning}`));
+      return EXIT_OK;
+    } catch (error) {
+      io.stderr(error instanceof Error ? error.message : "Import preview failed.");
+      return EXIT_ERROR;
+    }
+  }
+
   try {
-    const result = libraryFrom(io, flags).importBackup(raw, mode);
+    const result = library.importBackup(raw, mode);
     io.stderr(
       `Imported (${mode}): ${result.importedPromptCount} added, ${result.mergedPromptCount} merged, ` +
         `${result.replacedPromptCount} replaced, ${result.skippedConflictCount} skipped.`
@@ -390,8 +544,8 @@ async function cmdPick(io: CliIO, flags: Record<string, string | boolean>): Prom
 
 export async function run(argv: string[], io: CliIO): Promise<number> {
   const { positionals, flags, lists } = parseArgs(argv, {
-    booleans: ["json", "help", "version", "yes", "strict"],
-    arrays: ["var"]
+    booleans: ["json", "help", "version", "yes", "strict", "minor", "dry-run"],
+    arrays: ["var", "alias"]
   });
   const command = positionals.shift();
 
@@ -415,6 +569,13 @@ export async function run(argv: string[], io: CliIO): Promise<number> {
       return cmdCopy(io, positionals, flags, lists);
     case "print":
       return cmdPrint(io, positionals, flags, lists);
+    case "add":
+      return cmdAdd(io, positionals, flags, lists);
+    case "edit":
+      return cmdEdit(io, positionals, flags, lists);
+    case "rm":
+    case "remove":
+      return cmdRemove(io, positionals, flags);
     case "import":
       return cmdImport(io, positionals, flags);
     case "export":
@@ -439,6 +600,7 @@ export function createDefaultIO(overrides: Partial<CliIO> = {}): CliIO {
     createLibrary: (libraryPath) => new PromptLibrary(libraryPath ? { path: libraryPath } : {}),
     readFile: (filePath) => fs.readFileSync(filePath, "utf8"),
     writeFile: (filePath, data) => fs.writeFileSync(filePath, data, "utf8"),
+    readStdin: () => fs.readFileSync(0, "utf8"),
     platform: process.platform,
     ...overrides
   };

@@ -82,4 +82,34 @@ describe("PromptLibrary", () => {
     const library = new PromptLibrary({ path: libPath });
     expect(() => library.importBackup({ kind: "nope" }, "merge-safe")).toThrow();
   });
+
+  it("adds, edits, and removes a prompt with collision enforcement", () => {
+    const library = new PromptLibrary({ path: libPath, seed: false });
+    const added = library.addPrompt({ command: "standup", content: "Standup for {{day}}", aliases: ["su"] });
+    expect(added.command).toBe("/standup");
+    expect(Object.keys(added.variables)).toContain("day");
+
+    // Collision on the alias is rejected.
+    expect(() => library.addPrompt({ command: "other", aliases: ["su"] })).toThrow(/collision/i);
+
+    const edited = library.updatePrompt("standup", { content: "New body", description: "Daily" });
+    expect(edited.versions.length).toBe(2);
+    expect(edited.description).toBe("Daily");
+
+    const inPlace = library.updatePrompt("standup", { content: "Patched", minor: true });
+    expect(inPlace.versions.length).toBe(2);
+    expect(library.resolve("standup")?.resolved.content).toBe("Patched");
+
+    const removed = library.removePrompt("su");
+    expect(removed.id).toBe("standup");
+    expect(library.list()).toHaveLength(0);
+  });
+
+  it("plans an import without writing", () => {
+    const library = new PromptLibrary({ path: libPath, seed: false });
+    const backup = createBackup([newPrompt("x", "/x")]);
+    const { plan } = library.planImport(backup);
+    expect(plan.summary.newPromptCount).toBe(1);
+    expect(library.list()).toHaveLength(0); // unchanged
+  });
 });

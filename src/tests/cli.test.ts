@@ -32,10 +32,15 @@ function makeHarness(overrides: Partial<CliIO> = {}): Harness {
     createLibrary: (p) => new PromptLibrary({ path: p || libPath }),
     readFile: (filePath) => fs.readFileSync(filePath, "utf8"),
     writeFile: (filePath, data) => fs.writeFileSync(filePath, data, "utf8"),
+    readStdin: () => "",
     platform: "linux",
     ...overrides
   };
   return { io, out, err, clipboard };
+}
+
+async function addNote(): Promise<void> {
+  await run(["add", "/note", "--content", "v1 body"], makeHarness().io);
 }
 
 beforeEach(() => {
@@ -190,6 +195,97 @@ describe("cli run", () => {
     const parsed = JSON.parse(h.out.join("\n"));
     expect(parsed.kind).toBe("promptdeck.backup");
     expect(parsed.data.prompts.length).toBeGreaterThan(0);
+  });
+
+  it("adds a prompt from --content and resolves it", async () => {
+    const h = makeHarness();
+    const code = await run(
+      ["add", "/standup", "--content", "Write a standup update for {{day}}.", "--tags", "team,daily", "--alias", "su"],
+      h.io
+    );
+    expect(code).toBe(EXIT_OK);
+    const lib = new PromptLibrary({ path: libPath });
+    expect(lib.resolve("/standup")?.resolved.content).toContain("standup update");
+    expect(lib.resolve("su")?.prompt.id).toBe("standup"); // alias resolves
+  });
+
+  it("rejects add when the command collides", async () => {
+    const h = makeHarness();
+    await run(["add", "/dup", "--content", "one"], h.io);
+    const h2 = makeHarness();
+    const code = await run(["add", "/dup", "--content", "two"], h2.io);
+    expect(code).toBe(1);
+    expect(h2.err.join("\n")).toMatch(/already exists/);
+  });
+
+  it("reads add content from stdin via --file -", async () => {
+    const h = makeHarness({ readStdin: () => "from stdin body" });
+    await run(["add", "/piped", "--file", "-"], h.io);
+    expect(new PromptLibrary({ path: libPath }).resolve("/piped")?.resolved.content).toBe("from stdin body");
+  });
+
+  it("edits a prompt and creates a new version by default", async () => {
+    const h = makeHarness();
+    await run(["add", "/note", "--content", "v1 body"], h.io);
+    const before = new PromptLibrary({ path: libPath }).resolve("/note")!.prompt.versions.length;
+    await run(["edit", "/note", "--content", "v2 body"], makeHarness().io);
+    const after = new PromptLibrary({ path: libPath }).resolve("/note")!;
+    expect(after.resolved.content).toBe("v2 body");
+    expect(after.prompt.versions.length).toBe(before + 1);
+  });
+
+  it("edits a prompt in place with --minor", async () => {
+    await addNote();
+    await run(["edit", "/note", "--content", "patched", "--minor"], makeHarness().io);
+    const after = new PromptLibrary({ path: libPath }).resolve("/note")!;
+    expect(after.resolved.content).toBe("patched");
+    expect(after.prompt.versions.length).toBe(1);
+  });
+
+  it("removes a prompt", async () => {
+    await addNote();
+    const code = await run(["rm", "/note"], makeHarness().io);
+    expect(code).toBe(EXIT_OK);
+    expect(new PromptLibrary({ path: libPath }).list().some((p) => p.id === "note")).toBe(false);
+  });
+
+  it("returns not-found when removing a missing prompt", async () => {
+    const code = await run(["rm", "/nope-nope"], makeHarness().io);
+    expect(code).toBe(EXIT_NOT_FOUND);
+  });
+
+  it("previews an import with --dry-run without writing", async () => {
+    const backupPath = path.join(tmpDir, "dry.json");
+    const now = "2026-01-01T00:00:00.000Z";
+    fs.writeFileSync(
+      backupPath,
+      JSON.stringify(
+        createBackup([
+          {
+            id: "fresh",
+            title: "Fresh",
+            command: "/fresh",
+            aliases: [],
+            tags: [],
+            description: "",
+            defaultVersionId: "v1",
+            versions: [{ id: "v1", promptId: "fresh", label: "Original", content: "x", changelog: "", createdAt: now, createdBy: "local user", isDefault: true }],
+            variants: [],
+            variables: {},
+            createdAt: now,
+            updatedAt: now,
+            usageCount: 0
+          }
+        ])
+      )
+    );
+    const h = makeHarness();
+    const code = await run(["import", backupPath, "--dry-run", "--json"], h.io);
+    expect(code).toBe(EXIT_OK);
+    const summary = JSON.parse(h.out.join("\n"));
+    expect(summary.newPromptCount).toBe(1);
+    // Nothing was written: the new prompt must not be in the library.
+    expect(new PromptLibrary({ path: libPath }).list().some((p) => p.id === "fresh")).toBe(false);
   });
 
   it("reports doctor JSON with clipboard status", async () => {

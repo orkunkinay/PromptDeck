@@ -50,7 +50,9 @@ export function parseArgs(argv: string[], options: ParseOptions | string[] = {})
         continue;
       }
       const next = argv[i + 1];
-      if (next !== undefined && !next.startsWith("-")) {
+      // Accept a lone "-" (stdin/stdout convention) as a value, but otherwise
+      // treat a following dash-flag as "this flag is a boolean".
+      if (next !== undefined && (next === "-" || !next.startsWith("-"))) {
         if (arrays.has(key)) pushList(key, next);
         else flags[key] = next;
         i += 1;
