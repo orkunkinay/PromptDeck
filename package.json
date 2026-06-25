@@ -34,6 +34,7 @@
     "package:chrome": "npm run build && npm run package:chrome:dist",
     "package:chrome:dist": "node scripts/package-chrome.mjs",
     "build:cli": "node scripts/build-cli.mjs",
+    "prepare": "npm run build:cli",
     "prepublishOnly": "npm run build:cli",
     "cli": "vite-node src/cli/index.ts --",
     "validate:package": "node scripts/package-chrome.mjs --validate-only",
