@@ -485,15 +485,15 @@ npm run build      # load dist/ as an unpacked extension</code></pre>
           </div>
           <div class="card">
             <h3>Terminal CLI</h3>
-            <p>Search, print, and copy prompts from the command line. <code>--json</code> output and stable exit codes make it scriptable for coding agents.</p>
+            <p>Search, print, copy, create, edit, and delete prompts from the command line. <code>--edit</code> opens a prompt document in your editor for multiline authoring.</p>
             <pre><code>npm run build:cli &amp;&amp; npm link
 promptdeck search refactor --json
-promptdeck print /paper-reading:short
-promptdeck copy /commit-message</code></pre>
+promptdeck add /paper-reading --edit
+promptdeck edit /commit-message --edit --new-version</code></pre>
           </div>
           <div class="card">
             <h3>VS Code extension</h3>
-            <p>Search, insert, and copy prompts through the Command Palette and Quick Pick, including variant and version picks.</p>
+            <p>Search, insert, copy, and author prompts through the Command Palette, Quick Pick, and PromptDeck sidebar. Saving <code>promptdeck:</code> documents updates the shared file library.</p>
             <pre><code>cd extensions/vscode
 npm run build      # then press F5 to launch</code></pre>
           </div>
@@ -554,6 +554,16 @@ promptdeck export promptdeck-from-cli.json</code></pre>
           <div class="card">
             <h3>Placeholders</h3>
             <p>Tokens like <code>{{paper_text}}</code> are detected and tracked as metadata. Current insertion preserves them exactly as saved.</p>
+          </div>
+          <div class="card">
+            <h3>Prompt documents</h3>
+            <p>The CLI editor flow and VS Code prompt documents use YAML-style frontmatter plus a Markdown body, so long prompts can be edited without touching raw JSON.</p>
+            <pre><code>---
+command: /paper-reading
+aliases: [/paper, /read]
+tags: [research, summarize]
+---
+Prompt body with {{placeholders}}</code></pre>
           </div>
         </div>
       </section>
@@ -648,6 +658,10 @@ promptdeck export promptdeck-from-cli.json</code></pre>
           <div class="card">
             <h3>Backups</h3>
             <p><code>src/shared/backup/</code> defines backup schema, validation, migration, import planning, conflict handling, and apply modes.</p>
+          </div>
+          <div class="card">
+            <h3>Prompt documents</h3>
+            <p><code>src/core/promptDocument.ts</code> serializes prompts to an editable frontmatter format used by CLI <code>--edit</code> and the VS Code <code>promptdeck:</code> file provider.</p>
           </div>
         </div>
       </section>

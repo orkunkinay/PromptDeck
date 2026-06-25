@@ -61,8 +61,8 @@ export function parseArgs(argv: string[], options: ParseOptions | string[] = {})
       }
       continue;
     }
-    if (token === "-h") {
-      flags.help = true;
+    if (token === "-h" || token === "-e") {
+      flags[token === "-h" ? "help" : "edit"] = true;
       continue;
     }
     positionals.push(token);

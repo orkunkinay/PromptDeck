@@ -9,6 +9,7 @@ export * from "./fileStore";
 export * from "./resolve";
 export * from "./library";
 export * from "./clipboard";
+export * from "./promptDocument";
 
 // Re-export the shared model and key helpers so consumers have a single entry.
 export type {
