@@ -33,6 +33,9 @@ function makeHarness(overrides: Partial<CliIO> = {}): Harness {
     readFile: (filePath) => fs.readFileSync(filePath, "utf8"),
     writeFile: (filePath, data) => fs.writeFileSync(filePath, data, "utf8"),
     readStdin: () => "",
+    stdinIsTTY: () => false,
+    confirm: () => true,
+    editInEditor: async (initial) => initial,
     platform: "linux",
     ...overrides
   };
@@ -209,6 +212,40 @@ describe("cli run", () => {
     expect(lib.resolve("su")?.prompt.id).toBe("standup"); // alias resolves
   });
 
+  it("adds a prompt from --edit using the editor result", async () => {
+    const h = makeHarness({
+      editInEditor: async () => `---
+command: /edited
+title: Edited Prompt
+aliases: [/ed]
+tags: [authoring, cli]
+description: Created in an editor
+---
+Edited body`
+    });
+    const code = await run(["add", "/edited", "--edit"], h.io);
+    expect(code).toBe(EXIT_OK);
+    const prompt = new PromptLibrary({ path: libPath }).resolve("/edited")!;
+    expect(prompt.prompt.title).toBe("Edited Prompt");
+    expect(prompt.prompt.aliases).toEqual(["/ed"]);
+    expect(prompt.resolved.content).toBe("Edited body");
+  });
+
+  it("aborts add --edit when the editor content is unchanged", async () => {
+    const h = makeHarness({ editInEditor: async (initial) => initial });
+    const code = await run(["add", "/unchanged", "--edit"], h.io);
+    expect(code).toBe(EXIT_OK);
+    expect(h.err.join("\n")).toContain("Aborted");
+    expect(new PromptLibrary({ path: libPath }).resolve("/unchanged")).toBeUndefined();
+  });
+
+  it("rejects --edit combined with --content", async () => {
+    const h = makeHarness();
+    const code = await run(["add", "/bad", "--edit", "--content", "body"], h.io);
+    expect(code).toBe(1);
+    expect(h.err.join("\n")).toContain("cannot be combined");
+  });
+
   it("rejects add when the command collides", async () => {
     const h = makeHarness();
     await run(["add", "/dup", "--content", "one"], h.io);
@@ -242,10 +279,64 @@ describe("cli run", () => {
     expect(after.prompt.versions.length).toBe(1);
   });
 
-  it("removes a prompt", async () => {
+  it("edits a prompt document in place by default with --edit", async () => {
     await addNote();
-    const code = await run(["rm", "/note"], makeHarness().io);
+    const h = makeHarness({
+      editInEditor: async (initial) => initial.replace("v1 body", "edited in place")
+    });
+    const code = await run(["edit", "/note", "--edit"], h.io);
     expect(code).toBe(EXIT_OK);
+    const after = new PromptLibrary({ path: libPath }).resolve("/note")!;
+    expect(after.resolved.content).toBe("edited in place");
+    expect(after.prompt.versions.length).toBe(1);
+  });
+
+  it("creates a new version for edit --edit --new-version", async () => {
+    await addNote();
+    const h = makeHarness({
+      editInEditor: async (initial) => initial.replace("v1 body", "edited as new version")
+    });
+    const code = await run(["edit", "/note", "--edit", "--new-version"], h.io);
+    expect(code).toBe(EXIT_OK);
+    const after = new PromptLibrary({ path: libPath }).resolve("/note")!;
+    expect(after.resolved.content).toBe("edited as new version");
+    expect(after.prompt.versions.length).toBe(2);
+  });
+
+  it("removes a prompt without confirmation when stdin is not a TTY", async () => {
+    await addNote();
+    let asked = false;
+    const code = await run(["rm", "/note"], makeHarness({ confirm: () => {
+      asked = true;
+      return false;
+    } }).io);
+    expect(code).toBe(EXIT_OK);
+    expect(asked).toBe(false);
+    expect(new PromptLibrary({ path: libPath }).list().some((p) => p.id === "note")).toBe(false);
+  });
+
+  it("aborts rm when confirmation is declined", async () => {
+    await addNote();
+    const h = makeHarness({ stdinIsTTY: () => true, confirm: () => false });
+    const code = await run(["rm", "/note"], h.io);
+    expect(code).toBe(EXIT_OK);
+    expect(h.err.join("\n")).toContain("Aborted");
+    expect(new PromptLibrary({ path: libPath }).resolve("/note")).toBeTruthy();
+  });
+
+  it("removes a prompt with --yes without asking for confirmation", async () => {
+    await addNote();
+    let asked = false;
+    const h = makeHarness({
+      stdinIsTTY: () => true,
+      confirm: () => {
+        asked = true;
+        return false;
+      }
+    });
+    const code = await run(["rm", "/note", "--yes"], h.io);
+    expect(code).toBe(EXIT_OK);
+    expect(asked).toBe(false);
     expect(new PromptLibrary({ path: libPath }).list().some((p) => p.id === "note")).toBe(false);
   });
 

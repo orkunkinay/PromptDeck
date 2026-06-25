@@ -16,10 +16,57 @@
       { "command": "promptdeck.searchPrompt", "title": "PromptDeck: Search Prompt" },
       { "command": "promptdeck.insertPrompt", "title": "PromptDeck: Insert Prompt" },
       { "command": "promptdeck.copyPrompt", "title": "PromptDeck: Copy Prompt" },
+      { "command": "promptdeck.newPrompt", "title": "PromptDeck: New Prompt" },
+      { "command": "promptdeck.editPrompt", "title": "PromptDeck: Edit Prompt" },
+      { "command": "promptdeck.duplicatePrompt", "title": "PromptDeck: Duplicate Prompt" },
+      { "command": "promptdeck.deletePrompt", "title": "PromptDeck: Delete Prompt" },
       { "command": "promptdeck.importBackup", "title": "PromptDeck: Import Backup" },
       { "command": "promptdeck.exportBackup", "title": "PromptDeck: Export Backup" },
       { "command": "promptdeck.openLibraryFile", "title": "PromptDeck: Open Library File" }
     ],
+    "viewsContainers": {
+      "activitybar": [
+        {
+          "id": "promptdeck",
+          "title": "PromptDeck",
+          "icon": "resources/promptdeck.svg"
+        }
+      ]
+    },
+    "views": {
+      "promptdeck": [
+        {
+          "id": "promptdeck.prompts",
+          "name": "Prompts"
+        }
+      ]
+    },
+    "menus": {
+      "view/title": [
+        {
+          "command": "promptdeck.newPrompt",
+          "when": "view == promptdeck.prompts",
+          "group": "navigation"
+        }
+      ],
+      "view/item/context": [
+        {
+          "command": "promptdeck.editPrompt",
+          "when": "view == promptdeck.prompts && viewItem == prompt",
+          "group": "inline"
+        },
+        {
+          "command": "promptdeck.duplicatePrompt",
+          "when": "view == promptdeck.prompts",
+          "group": "inline"
+        },
+        {
+          "command": "promptdeck.deletePrompt",
+          "when": "view == promptdeck.prompts",
+          "group": "navigation"
+        }
+      ]
+    },
     "configuration": {
       "title": "PromptDeck",
       "properties": {

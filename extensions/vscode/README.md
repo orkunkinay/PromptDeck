@@ -12,9 +12,17 @@ Open the Command Palette (`Cmd/Ctrl+Shift+P`) and run:
 - **PromptDeck: Search Prompt** — search, then choose Insert / Copy / Show.
 - **PromptDeck: Insert Prompt** — insert the resolved prompt at the cursor (or replace the selection).
 - **PromptDeck: Copy Prompt** — copy the resolved prompt to the clipboard.
+- **PromptDeck: New Prompt** — open a prompt document for a new prompt; save it to add it to the library.
+- **PromptDeck: Edit Prompt** — edit a prompt document and save it back in place.
+- **PromptDeck: Duplicate Prompt** — open a copy as a new prompt document.
+- **PromptDeck: Delete Prompt** — delete a prompt after a modal confirmation.
 - **PromptDeck: Import Backup** — import a `promptdeck.backup` JSON file.
 - **PromptDeck: Export Backup** — export the library as a PromptDeck backup.
 - **PromptDeck: Open Library File** — open `library.json` in the editor.
+
+The PromptDeck activity bar view lists prompts at the top level, with variants
+and non-default versions underneath. Use the view title and item context menus
+to create, edit, duplicate, or delete prompts.
 
 The Quick Pick lists each prompt plus every addressable variant and non-default
 version (for example `/paper-reading` and `/paper-reading:short`), so you can

@@ -1,8 +1,13 @@
 import fs from "node:fs";
+import os from "node:os";
+import path from "node:path";
+import { spawn } from "node:child_process";
+import { createInterface } from "node:readline/promises";
 import type { Prompt } from "../shared/models/prompt";
 import type { ImportMode } from "../shared/backup";
 import { PromptLibrary } from "../core/library";
 import { clipboardAvailable as defaultClipboardAvailable, copyToClipboard, type ClipboardResult } from "../core/clipboard";
+import { parsePromptDocument, promptTemplate, serializePromptDocument } from "../core/promptDocument";
 import { compilePrompt } from "../shared/promptCompiler/compiler";
 import type { TokenResolution } from "../core/resolve";
 import { flagBool, flagString, parseArgs } from "./args";
@@ -24,6 +29,12 @@ export interface CliIO {
   writeFile(filePath: string, data: string): void;
   /** Read all of stdin (used for `--file -`). */
   readStdin(): string;
+  /** Whether stdin is attached to an interactive terminal. */
+  stdinIsTTY(): boolean;
+  /** Ask a yes/no terminal question. */
+  confirm(question: string): boolean | Promise<boolean>;
+  /** Open the user's editor with initial content; undefined means editor failed/cancelled. */
+  editInEditor(initial: string, ext?: string): Promise<string | undefined>;
   /** Optional terminal picker; returns the selected token, or undefined if cancelled. */
   interactivePick?(library: PromptLibrary): Promise<string | undefined>;
   platform: NodeJS.Platform;
@@ -60,11 +71,14 @@ Options:
   --strict                      Fail if required placeholders are left unfilled (copy/print).
   --content <text>              Prompt body for add/edit.
   --file <path>                 Read the prompt body from a file ("-" for stdin) for add/edit.
+  -e, --edit                    Open $EDITOR on a prompt document for add/edit.
   --title <text>                Prompt title for add/edit.
   --tags a,b,c                  Comma-separated tags for add/edit.
   --alias <name>                Alias for add/edit (repeatable).
   --desc <text>                 Description for add/edit.
   --minor                       Edit the default version in place instead of versioning.
+  --new-version                 With edit --edit, save as a new version instead of in place.
+  --yes                         Skip delete confirmation.
   --dry-run                     Preview an import without writing.
   --mode <merge-safe|merge-update|replace>   Import strategy (default: merge-safe).
   --library <path>              Use a specific library file.
@@ -191,16 +205,56 @@ function readContentArg(io: CliIO, flags: Record<string, string | boolean>): Con
   return {};
 }
 
-function cmdAdd(
+function editConflict(flags: Record<string, string | boolean>): string | undefined {
+  if (!flagBool(flags, "edit")) return undefined;
+  if (flagString(flags, "content") !== undefined || flagString(flags, "file") !== undefined) {
+    return "Use --edit by itself; it cannot be combined with --content or --file.";
+  }
+  return undefined;
+}
+
+async function readEditedDocument(io: CliIO, initial: string): Promise<{ text?: string; error?: string; aborted?: boolean }> {
+  const edited = await io.editInEditor(initial, ".prompt.md");
+  if (edited === undefined) return { error: "Editor exited without saving a prompt document." };
+  if (!edited.trim()) return { aborted: true };
+  if (edited === initial) return { aborted: true };
+  return { text: edited };
+}
+
+async function cmdAdd(
   io: CliIO,
   positionals: string[],
   flags: Record<string, string | boolean>,
   lists: Record<string, string[]>
-): number {
+): Promise<number> {
   const command = positionals[0];
   if (!command) {
     io.stderr("Usage: promptdeck add <command> [--content <text> | --file <path>] [--title] [--tags a,b] [--alias x] [--desc]");
     return EXIT_ERROR;
+  }
+  const conflict = editConflict(flags);
+  if (conflict) {
+    io.stderr(conflict);
+    return EXIT_ERROR;
+  }
+  if (flagBool(flags, "edit")) {
+    const edited = await readEditedDocument(io, promptTemplate(command));
+    if (edited.error) {
+      io.stderr(edited.error);
+      return EXIT_ERROR;
+    }
+    if (edited.aborted || edited.text === undefined) {
+      io.stderr("Aborted: prompt document was unchanged or empty.");
+      return EXIT_OK;
+    }
+    try {
+      const prompt = libraryFrom(io, flags).addPrompt(parsePromptDocument(edited.text));
+      io.stderr(`Added ${prompt.command} (${prompt.id}).`);
+      return EXIT_OK;
+    } catch (err) {
+      io.stderr(err instanceof Error ? err.message : "Could not add the prompt.");
+      return EXIT_ERROR;
+    }
   }
   const { content, error } = readContentArg(io, flags);
   if (error) {
@@ -224,16 +278,60 @@ function cmdAdd(
   }
 }
 
-function cmdEdit(
+async function cmdEdit(
   io: CliIO,
   positionals: string[],
   flags: Record<string, string | boolean>,
   lists: Record<string, string[]>
-): number {
+): Promise<number> {
   const token = positionals[0];
   if (!token) {
     io.stderr("Usage: promptdeck edit <command-or-id> [--content <text> | --file <path>] [--title] [--tags] [--alias] [--desc] [--minor]");
     return EXIT_ERROR;
+  }
+  const conflict = editConflict(flags);
+  if (conflict) {
+    io.stderr(conflict);
+    return EXIT_ERROR;
+  }
+  if (flagBool(flags, "edit")) {
+    try {
+      const library = libraryFrom(io, flags);
+      const resolution = library.resolve(token);
+      if (!resolution) {
+        io.stderr(`No prompt found for "${token}".`);
+        return EXIT_NOT_FOUND;
+      }
+      const initial = serializePromptDocument(resolution.prompt);
+      const edited = await readEditedDocument(io, initial);
+      if (edited.error) {
+        io.stderr(edited.error);
+        return EXIT_ERROR;
+      }
+      if (edited.aborted || edited.text === undefined) {
+        io.stderr("Aborted: prompt document was unchanged or empty.");
+        return EXIT_OK;
+      }
+      const parsed = parsePromptDocument(edited.text);
+      if (parsed.command !== resolution.prompt.command) {
+        io.stderr("Changing a prompt command is not supported when editing. Create a new prompt instead.");
+        return EXIT_ERROR;
+      }
+      const prompt = library.updatePrompt(token, {
+        title: parsed.title,
+        description: parsed.description,
+        tags: parsed.tags,
+        aliases: parsed.aliases,
+        content: parsed.content,
+        minor: !flagBool(flags, "new-version")
+      });
+      io.stderr(`Updated ${prompt.command} (${prompt.id}).`);
+      return EXIT_OK;
+    } catch (err) {
+      const message = err instanceof Error ? err.message : "Could not edit the prompt.";
+      io.stderr(message);
+      return message.startsWith("No prompt found") ? EXIT_NOT_FOUND : EXIT_ERROR;
+    }
   }
   const { content, error } = readContentArg(io, flags);
   if (error) {
@@ -258,14 +356,24 @@ function cmdEdit(
   }
 }
 
-function cmdRemove(io: CliIO, positionals: string[], flags: Record<string, string | boolean>): number {
+async function cmdRemove(io: CliIO, positionals: string[], flags: Record<string, string | boolean>): Promise<number> {
   const token = positionals[0];
   if (!token) {
     io.stderr("Usage: promptdeck rm <command-or-id>");
     return EXIT_ERROR;
   }
   try {
-    const removed = libraryFrom(io, flags).removePrompt(token);
+    const library = libraryFrom(io, flags);
+    const existing = library.resolve(token)?.prompt;
+    if (!existing) throw new Error(`No prompt found for "${token}".`);
+    if (io.stdinIsTTY() && !flagBool(flags, "yes")) {
+      const confirmed = await io.confirm(`Delete ${existing.command}? [y/N] `);
+      if (!confirmed) {
+        io.stderr("Aborted.");
+        return EXIT_OK;
+      }
+    }
+    const removed = library.removePrompt(token);
     io.stderr(`Removed ${removed.command} (${removed.id}).`);
     return EXIT_OK;
   } catch (err) {
@@ -544,7 +652,7 @@ async function cmdPick(io: CliIO, flags: Record<string, string | boolean>): Prom
 
 export async function run(argv: string[], io: CliIO): Promise<number> {
   const { positionals, flags, lists } = parseArgs(argv, {
-    booleans: ["json", "help", "version", "yes", "strict", "minor", "dry-run"],
+    booleans: ["json", "help", "version", "yes", "strict", "minor", "new-version", "dry-run", "edit"],
     arrays: ["var", "alias"]
   });
   const command = positionals.shift();
@@ -601,6 +709,33 @@ export function createDefaultIO(overrides: Partial<CliIO> = {}): CliIO {
     readFile: (filePath) => fs.readFileSync(filePath, "utf8"),
     writeFile: (filePath, data) => fs.writeFileSync(filePath, data, "utf8"),
     readStdin: () => fs.readFileSync(0, "utf8"),
+    stdinIsTTY: () => Boolean(process.stdin.isTTY),
+    confirm: async (question) => {
+      const rl = createInterface({ input: process.stdin, output: process.stderr });
+      try {
+        const answer = await rl.question(question);
+        return answer.trim().toLowerCase() === "y" || answer.trim().toLowerCase() === "yes";
+      } finally {
+        rl.close();
+      }
+    },
+    editInEditor: async (initial, ext = ".tmp") => {
+      const dir = fs.mkdtempSync(path.join(os.tmpdir(), "promptdeck-edit-"));
+      const filePath = path.join(dir, `prompt${ext}`);
+      try {
+        fs.writeFileSync(filePath, initial, "utf8");
+        const editor = process.env.EDITOR || process.env.VISUAL || "vi";
+        const code = await new Promise<number | null>((resolve) => {
+          const child = spawn(editor, [filePath], { stdio: "inherit", shell: true });
+          child.on("error", () => resolve(1));
+          child.on("close", resolve);
+        });
+        if (code !== 0) return undefined;
+        return fs.readFileSync(filePath, "utf8");
+      } finally {
+        fs.rmSync(dir, { recursive: true, force: true });
+      }
+    },
     platform: process.platform,
     ...overrides
   };
