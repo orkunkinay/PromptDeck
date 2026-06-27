@@ -13,6 +13,7 @@
   "activationEvents": [],
   "contributes": {
     "commands": [
+      { "command": "promptdeck.openManager", "title": "PromptDeck: Open Manager" },
       { "command": "promptdeck.searchPrompt", "title": "PromptDeck: Search Prompt" },
       { "command": "promptdeck.insertPrompt", "title": "PromptDeck: Insert Prompt" },
       { "command": "promptdeck.copyPrompt", "title": "PromptDeck: Copy Prompt" },
@@ -44,9 +45,14 @@
     "menus": {
       "view/title": [
         {
+          "command": "promptdeck.openManager",
+          "when": "view == promptdeck.prompts",
+          "group": "navigation@0"
+        },
+        {
           "command": "promptdeck.newPrompt",
           "when": "view == promptdeck.prompts",
-          "group": "navigation"
+          "group": "navigation@1"
         }
       ],
       "view/item/context": [

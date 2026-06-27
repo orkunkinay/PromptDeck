@@ -10,7 +10,7 @@ PromptDeck now ships across four surfaces that all share one prompt model and th
 
 1. **Browser extension** — a Chrome/Manifest V3 extension with a `;;` autocomplete helper and a manager UI.
 2. **Terminal CLI** — search, print, and copy prompts from the command line, with JSON output for scripts and coding agents.
-3. **VS Code extension** — search, insert, and copy prompts through the Command Palette and Quick Pick.
+3. **VS Code extension** — manage the central file library in a full editor-side manager, plus search, insert, and copy prompts through the Command Palette and Quick Pick.
 4. **Native desktop / clipboard** — copy a resolved prompt to the system clipboard from the CLI, ready to paste into any native app (ChatGPT Desktop, Claude Desktop, editors, etc.).
 
 The browser extension keeps its library in the browser profile (IndexedDB). The CLI and VS Code extension share a local-first JSON file store (default `~/.promptdeck/library.json`). Backups bridge the two: a browser backup can seed the file store, and the file store can export a browser-compatible backup. No account, cloud, telemetry, or backend is involved on any surface.
@@ -61,7 +61,7 @@ Create, organize, version, and back up reusable prompts from a focused dashboard
 - Supports variants that can be selected with suffixes such as `;;paper:short`.
 - Detects `{{placeholder}}` tokens and stores placeholder metadata.
 - Exports JSON backups, previews imports, handles conflicts, and exports individual prompts as Markdown.
-- Currently ships as a Manifest V3 browser extension with minimal permissions: `storage` and `clipboardWrite`.
+- Ships as a Manifest V3 browser extension, terminal CLI, and desktop VS Code extension. Browser permissions stay minimal: `storage` and `clipboardWrite`.
 
 PromptDeck is not a prompt marketplace, prompt generator, cloud account system, analytics product, or chat-history reader.
 
@@ -192,12 +192,14 @@ promptdeck import backup.json --dry-run        # preview before writing
 ## VS Code Extension
 
 The VS Code extension lives in [`extensions/vscode`](extensions/vscode) and uses
-the same shared core and local file store as the CLI.
+the same shared core and local file store as the CLI. It edits the central
+PromptDeck file library, not the current repository directory, so prompts follow
+you across projects.
 
 ```bash
 npm install              # repo root, once
 cd extensions/vscode
-npm run build            # bundles dist/extension.js with esbuild
+npm run build            # bundles the extension and manager webview
 ```
 
 Open the `extensions/vscode` folder in VS Code and press `F5` to launch an
@@ -207,11 +209,23 @@ Extension Development Host. To package a `.vsix`, run `npm install` inside
 
 Commands (Command Palette):
 
+- **PromptDeck: Open Manager** — open the full PromptDeck manager inside VS Code.
 - **PromptDeck: Search Prompt** — search, then Insert / Copy / Show.
 - **PromptDeck: Insert Prompt** — insert at the cursor or replace the selection.
 - **PromptDeck: Copy Prompt** — copy resolved content to the clipboard.
+- **PromptDeck: New Prompt** / **Edit Prompt** / **Duplicate Prompt** / **Delete Prompt** — native editor workflows using virtual `promptdeck:` documents.
 - **PromptDeck: Import Backup** / **Export Backup** — bridge with PromptDeck backups.
 - **PromptDeck: Open Library File** — open `library.json`.
+
+The manager is an app-like Webview in the editor area. It shows the active
+library path, lets you browse and search prompts, edit metadata and prompt
+content, manage placeholders, variants, and versions, duplicate or delete
+prompts, import/export backups, insert a resolved prompt into the active editor,
+and copy a resolved prompt to the clipboard.
+
+When a prompt contains `{{placeholder}}` tokens, Insert and Copy ask for values
+using VS Code input boxes, then use the filled result. If there is no active
+editor, insertion falls back to copying.
 
 The Quick Pick lists each prompt plus every addressable variant and non-default
 version. Override the library path per-workspace with the `promptdeck.libraryPath`

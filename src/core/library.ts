@@ -1,4 +1,4 @@
-import type { Prompt, PromptVersion } from "../shared/models/prompt";
+import type { Prompt, PromptDeckSettings, PromptVersion } from "../shared/models/prompt";
 import { searchPrompts, type SearchResult } from "../shared/search/fuzzySearch";
 import {
   applyImportPlanToState,
@@ -43,6 +43,15 @@ export interface UpdatePromptInput {
   content?: string;
   /** Edit the default version in place instead of creating a new version. */
   minor?: boolean;
+  changelog?: string;
+}
+
+export interface SavePromptOptions {
+  /** Edit the default version in place instead of creating a new version. */
+  minorEdit?: boolean;
+  /** Prompt body to persist as the default content or a new version. */
+  content?: string;
+  /** Changelog note when creating or updating a version. */
   changelog?: string;
 }
 
@@ -146,6 +155,44 @@ export class PromptLibrary {
     return prompt;
   }
 
+  /**
+   * Persist a full prompt object. This is used by richer manager UIs that edit
+   * variants, version metadata, and settings that are not covered by the CLI's
+   * narrow add/edit commands.
+   */
+  savePrompt(prompt: Prompt, options: SavePromptOptions = {}): Prompt {
+    const library = this.store.load();
+    const existing = library.prompts.find((candidate) => candidate.id === prompt.id);
+    let next = normalizePrompt({ ...prompt, updatedAt: nowIso() });
+
+    if (options.content !== undefined) {
+      if (existing && !options.minorEdit) {
+        next = createVersion(next, options.content, options.changelog || "Saved edit");
+      } else {
+        next.versions = next.versions.map((version) =>
+          version.id === next.defaultVersionId
+            ? { ...version, content: options.content as string, changelog: options.changelog || version.changelog }
+            : version
+        );
+      }
+      next.variables = ensureVariableDefinitions(options.content, next.variables);
+      next.body = options.content;
+    }
+
+    assertNoCollision(
+      library.prompts.filter((candidate) => candidate.id !== next.id),
+      next
+    );
+
+    if (existing) {
+      library.prompts = library.prompts.map((candidate) => (candidate.id === next.id ? next : candidate));
+    } else {
+      library.prompts.push(next);
+    }
+    this.store.write(library);
+    return next;
+  }
+
   /** Update a prompt's metadata and/or content, addressed by command/id/alias. */
   updatePrompt(token: string, changes: UpdatePromptInput): Prompt {
     const library = this.store.load();
@@ -244,6 +291,13 @@ export class PromptLibrary {
       settings: result.settings
     });
     return { ...result, warnings };
+  }
+
+  updateSettings(changes: Partial<PromptDeckSettings>): PromptDeckSettings {
+    const library = this.store.load();
+    const settings: PromptDeckSettings = { ...library.settings, ...changes, telemetryEnabled: false };
+    this.store.write({ ...library, settings });
+    return settings;
   }
 
   doctor(): DoctorReport {

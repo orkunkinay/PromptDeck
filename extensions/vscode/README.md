@@ -9,6 +9,7 @@ surfaces. No account, backend, or telemetry.
 
 Open the Command Palette (`Cmd/Ctrl+Shift+P`) and run:
 
+- **PromptDeck: Open Manager** — open the full PromptDeck manager in the editor area.
 - **PromptDeck: Search Prompt** — search, then choose Insert / Copy / Show.
 - **PromptDeck: Insert Prompt** — insert the resolved prompt at the cursor (or replace the selection).
 - **PromptDeck: Copy Prompt** — copy the resolved prompt to the clipboard.
@@ -23,6 +24,26 @@ Open the Command Palette (`Cmd/Ctrl+Shift+P`) and run:
 The PromptDeck activity bar view lists prompts at the top level, with variants
 and non-default versions underneath. Use the view title and item context menus
 to create, edit, duplicate, or delete prompts.
+
+## Manager
+
+The manager is the app-like VS Code surface for the central PromptDeck file
+library. It edits the same library as the CLI, not the current repository
+directory, and shows the active library path in the sidebar.
+
+Use it to:
+
+- Browse and search prompts.
+- Create, edit, duplicate, and delete prompts.
+- Edit command metadata, aliases, tags, descriptions, prompt content, placeholders, variants, and versions.
+- Import and export PromptDeck backup JSON files.
+- Insert a resolved prompt into the active editor.
+- Copy a resolved prompt to the clipboard.
+- Open the underlying `library.json` file when you need to inspect the raw store.
+
+Insert and Copy prompt for `{{placeholder}}` values with VS Code input boxes
+before using the filled result. If there is no active editor, insertion falls
+back to copying.
 
 The Quick Pick lists each prompt plus every addressable variant and non-default
 version (for example `/paper-reading` and `/paper-reading:short`), so you can
@@ -44,7 +65,7 @@ From the repository root, install dependencies once (`npm install`). Then:
 
 ```bash
 cd extensions/vscode
-npm run build          # bundles src/extension.ts -> dist/extension.js with esbuild
+npm run build          # bundles dist/extension.js and dist/webview/manager.js
 ```
 
 Open the `extensions/vscode` folder in VS Code and press `F5` (or run the
