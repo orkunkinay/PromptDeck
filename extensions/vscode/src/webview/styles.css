@@ -1,0 +1,550 @@
+* {
+  box-sizing: border-box;
+}
+
+html,
+body,
+#root {
+  width: 100%;
+  height: 100%;
+  margin: 0;
+}
+
+body {
+  overflow: hidden;
+  color: var(--vscode-foreground);
+  background: var(--vscode-editor-background);
+  font-family: var(--vscode-font-family);
+  font-size: var(--vscode-font-size);
+}
+
+button,
+input,
+textarea,
+select {
+  font: inherit;
+}
+
+input,
+textarea,
+select {
+  width: 100%;
+  border: 1px solid var(--vscode-input-border, var(--vscode-panel-border));
+  border-radius: 6px;
+  background: var(--vscode-input-background);
+  color: var(--vscode-input-foreground);
+  outline: none;
+}
+
+input,
+select {
+  height: 32px;
+  padding: 0 10px;
+}
+
+textarea {
+  padding: 10px;
+  resize: vertical;
+  line-height: 1.45;
+}
+
+input:focus,
+textarea:focus,
+select:focus,
+button:focus-visible {
+  border-color: var(--vscode-focusBorder);
+  outline: 1px solid var(--vscode-focusBorder);
+  outline-offset: 1px;
+}
+
+h1,
+h2,
+p {
+  margin: 0;
+}
+
+.pd-app {
+  display: grid;
+  width: 100%;
+  height: 100%;
+  min-width: 0;
+  grid-template-columns: minmax(280px, 24%) minmax(420px, 1fr) minmax(280px, 24%);
+}
+
+.pd-sidebar,
+.pd-editor,
+.pd-rail {
+  min-width: 0;
+  min-height: 0;
+  overflow: auto;
+}
+
+.pd-sidebar {
+  display: grid;
+  grid-template-rows: auto minmax(180px, 1fr) auto;
+  border-right: 1px solid var(--vscode-panel-border);
+  background: var(--vscode-sideBar-background);
+}
+
+.pd-sidebar-header {
+  padding: 18px;
+  border-bottom: 1px solid var(--vscode-panel-border);
+}
+
+.pd-brand {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.pd-brand-mark {
+  display: grid;
+  width: 34px;
+  height: 34px;
+  place-items: center;
+  border-radius: 7px;
+  background: var(--vscode-button-background);
+  color: var(--vscode-button-foreground);
+  font-weight: 700;
+}
+
+.pd-brand h1 {
+  font-size: 15px;
+  font-weight: 700;
+}
+
+.pd-brand p,
+.pd-muted,
+.pd-status {
+  color: var(--vscode-descriptionForeground);
+}
+
+.pd-library-path {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+  margin-top: 14px;
+  padding: 7px 8px;
+  border: 1px solid var(--vscode-panel-border);
+  border-radius: 6px;
+  background: var(--vscode-editorWidget-background);
+  color: var(--vscode-descriptionForeground);
+  font-size: 12px;
+}
+
+.pd-library-path span {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.pd-search-row {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 8px;
+  margin-top: 14px;
+}
+
+.pd-list {
+  padding: 12px;
+  overflow: auto;
+}
+
+.pd-list-meta {
+  display: flex;
+  justify-content: space-between;
+  padding: 0 4px 8px;
+  color: var(--vscode-descriptionForeground);
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.pd-list-item {
+  display: block;
+  width: 100%;
+  min-width: 0;
+  margin-bottom: 4px;
+  padding: 10px;
+  border: 1px solid transparent;
+  border-radius: 7px;
+  background: transparent;
+  color: var(--vscode-sideBar-foreground);
+  text-align: left;
+  cursor: pointer;
+}
+
+.pd-list-item:hover,
+.pd-list-item.is-selected {
+  border-color: var(--vscode-list-activeSelectionBackground);
+  background: var(--vscode-list-hoverBackground);
+}
+
+.pd-list-item strong,
+.pd-list-item span {
+  display: block;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.pd-list-item strong {
+  font-weight: 650;
+}
+
+.pd-list-item span {
+  margin-top: 4px;
+  color: var(--vscode-descriptionForeground);
+  font-size: 12px;
+}
+
+.pd-empty-list {
+  padding: 12px;
+  border: 1px dashed var(--vscode-panel-border);
+  border-radius: 7px;
+  color: var(--vscode-descriptionForeground);
+}
+
+.pd-utilities {
+  display: grid;
+  gap: 10px;
+  padding: 12px;
+  border-top: 1px solid var(--vscode-panel-border);
+}
+
+.pd-card {
+  border: 1px solid var(--vscode-panel-border);
+  border-radius: 8px;
+  background: var(--vscode-editorWidget-background);
+  padding: 14px;
+}
+
+.pd-card h2,
+.pd-section-header h2 {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.pd-card > * + *,
+.pd-utilities .pd-card > * + * {
+  margin-top: 10px;
+}
+
+.pd-button-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+}
+
+.pd-btn {
+  display: inline-flex;
+  height: 32px;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+  min-width: 0;
+  padding: 0 10px;
+  border: 1px solid var(--vscode-button-border, transparent);
+  border-radius: 6px;
+  background: var(--vscode-button-secondaryBackground);
+  color: var(--vscode-button-secondaryForeground);
+  font-weight: 650;
+  white-space: nowrap;
+  cursor: pointer;
+}
+
+.pd-btn-primary {
+  background: var(--vscode-button-background);
+  color: var(--vscode-button-foreground);
+}
+
+.pd-btn-primary:hover {
+  background: var(--vscode-button-hoverBackground);
+}
+
+.pd-btn-secondary:hover,
+.pd-btn-ghost:hover {
+  background: var(--vscode-button-secondaryHoverBackground);
+}
+
+.pd-btn-ghost {
+  border-color: transparent;
+  background: transparent;
+}
+
+.pd-btn-danger {
+  border-color: var(--vscode-inputValidation-errorBorder);
+  background: var(--vscode-inputValidation-errorBackground);
+  color: var(--vscode-errorForeground);
+}
+
+.pd-btn:disabled {
+  cursor: not-allowed;
+  opacity: 0.55;
+}
+
+.pd-field {
+  display: block;
+}
+
+.pd-field span {
+  display: block;
+  margin-bottom: 5px;
+  color: var(--vscode-descriptionForeground);
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.pd-editor {
+  padding: 22px;
+  background: var(--vscode-editor-background);
+}
+
+.pd-editor-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 18px;
+  margin-bottom: 18px;
+}
+
+.pd-badges {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-bottom: 8px;
+}
+
+.pd-badges span,
+.pd-save-state,
+.pd-version-card span {
+  border-radius: 999px;
+  background: var(--vscode-badge-background);
+  color: var(--vscode-badge-foreground);
+  padding: 3px 8px;
+  font-size: 11px;
+  font-weight: 700;
+}
+
+.pd-save-state.is-dirty {
+  background: var(--vscode-editorWarning-background);
+  color: var(--vscode-editorWarning-foreground, var(--vscode-foreground));
+}
+
+.pd-title-input {
+  height: auto;
+  max-width: 720px;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: var(--vscode-foreground);
+  font-size: 28px;
+  font-weight: 750;
+}
+
+.pd-actions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 8px;
+}
+
+.pd-details,
+.pd-content {
+  margin-bottom: 14px;
+}
+
+.pd-form-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.pd-section-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 10px;
+}
+
+.pd-section-header span {
+  color: var(--vscode-descriptionForeground);
+  font-size: 12px;
+}
+
+.pd-content textarea {
+  min-height: 320px;
+  border-radius: 0;
+  font-family: var(--vscode-editor-font-family);
+  font-size: var(--vscode-editor-font-size);
+}
+
+.pd-version-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: end;
+  gap: 12px;
+  margin-top: 10px;
+}
+
+.pd-checkbox {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 32px;
+}
+
+.pd-checkbox input {
+  width: auto;
+  height: auto;
+}
+
+.pd-variable-row {
+  display: grid;
+  grid-template-columns: minmax(120px, 1fr) 140px minmax(0, 1.4fr);
+  gap: 10px;
+  align-items: center;
+  padding: 9px 0;
+  border-top: 1px solid var(--vscode-panel-border);
+}
+
+.pd-variable-row code {
+  color: var(--vscode-symbolIcon-variableForeground);
+}
+
+.pd-variant {
+  margin-top: 10px;
+  padding: 10px;
+  border: 1px solid var(--vscode-panel-border);
+  border-radius: 7px;
+}
+
+.pd-variant-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 150px auto;
+  gap: 8px;
+}
+
+.pd-variant textarea {
+  min-height: 100px;
+  margin-top: 8px;
+  font-family: var(--vscode-editor-font-family);
+}
+
+.pd-rail {
+  display: grid;
+  align-content: start;
+  gap: 12px;
+  padding: 18px;
+  border-left: 1px solid var(--vscode-panel-border);
+  background: var(--vscode-sideBar-background);
+}
+
+.pd-version-list {
+  display: grid;
+  gap: 8px;
+}
+
+.pd-version-card {
+  padding: 10px;
+  border: 1px solid var(--vscode-panel-border);
+  border-radius: 7px;
+  background: var(--vscode-editor-background);
+}
+
+.pd-version-card div:first-child {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.pd-version-card input {
+  margin-top: 8px;
+}
+
+.pd-version-card p {
+  margin-top: 6px;
+  color: var(--vscode-descriptionForeground);
+  font-size: 12px;
+}
+
+.pd-mini-actions,
+.pd-compare-controls {
+  display: flex;
+  gap: 6px;
+  margin-top: 8px;
+}
+
+.pd-diff {
+  max-height: 280px;
+  overflow: auto;
+  margin: 10px 0 0;
+  padding: 10px;
+  border: 1px solid var(--vscode-panel-border);
+  border-radius: 7px;
+  background: var(--vscode-textCodeBlock-background);
+  color: var(--vscode-editor-foreground);
+  font-family: var(--vscode-editor-font-family);
+  font-size: 12px;
+  line-height: 1.45;
+}
+
+.pd-empty {
+  display: grid;
+  place-content: center;
+  gap: 12px;
+}
+
+@media (max-width: 1100px) {
+  .pd-app {
+    grid-template-columns: minmax(260px, 32%) minmax(0, 1fr);
+  }
+
+  .pd-rail {
+    display: none;
+  }
+}
+
+@media (max-width: 760px) {
+  body {
+    overflow: auto;
+  }
+
+  .pd-app {
+    height: auto;
+    min-height: 100%;
+    grid-template-columns: 1fr;
+  }
+
+  .pd-sidebar {
+    max-height: 520px;
+    border-right: 0;
+    border-bottom: 1px solid var(--vscode-panel-border);
+  }
+
+  .pd-editor-header,
+  .pd-version-row,
+  .pd-form-grid,
+  .pd-variable-row,
+  .pd-variant-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .pd-editor-header {
+    display: grid;
+  }
+
+  .pd-actions {
+    justify-content: flex-start;
+  }
+}

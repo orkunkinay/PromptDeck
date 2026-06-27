@@ -7,6 +7,7 @@ import {
   type PromptPick
 } from "./adapter";
 import type { TokenResolution } from "../../../src/core";
+import { PromptDeckManagerPanel } from "./managerPanel";
 import { PromptDocumentProvider } from "./promptDocumentProvider";
 import { PromptTreeDataProvider, type PromptTreeItem } from "./promptTree";
 
@@ -88,13 +89,11 @@ function promptUri(command: string): vscode.Uri {
   return vscode.Uri.parse(`promptdeck:/${promptResourceName(command)}`);
 }
 
-async function insertPrompt(): Promise<void> {
+async function insertPromptToken(token: string): Promise<void> {
   const library = openLibrary();
-  const picked = await pickPrompt(library, "Insert a prompt at the cursor");
-  if (!picked) return;
-  const resolution = library.resolve(picked.token);
+  const resolution = library.resolve(token);
   if (!resolution) {
-    vscode.window.showErrorMessage(`PromptDeck could not resolve "${picked.token}".`);
+    vscode.window.showErrorMessage(`PromptDeck could not resolve "${token}".`);
     return;
   }
   const content = await materializeContent(resolution);
@@ -117,20 +116,32 @@ async function insertPrompt(): Promise<void> {
   library.recordUsage(resolution.prompt.id);
 }
 
-async function copyPrompt(): Promise<void> {
+async function copyPromptToken(token: string): Promise<void> {
   const library = openLibrary();
-  const picked = await pickPrompt(library, "Copy a prompt to the clipboard");
-  if (!picked) return;
-  const resolution = library.resolve(picked.token);
+  const resolution = library.resolve(token);
   if (!resolution) {
-    vscode.window.showErrorMessage(`PromptDeck could not resolve "${picked.token}".`);
+    vscode.window.showErrorMessage(`PromptDeck could not resolve "${token}".`);
     return;
   }
   const content = await materializeContent(resolution);
   if (content === undefined) return;
   await vscode.env.clipboard.writeText(content);
   library.recordUsage(resolution.prompt.id);
-  vscode.window.showInformationMessage(`Copied ${picked.label} to the clipboard.`);
+  vscode.window.showInformationMessage(`Copied ${token} to the clipboard.`);
+}
+
+async function insertPrompt(): Promise<void> {
+  const library = openLibrary();
+  const picked = await pickPrompt(library, "Insert a prompt at the cursor");
+  if (!picked) return;
+  await insertPromptToken(picked.token);
+}
+
+async function copyPrompt(): Promise<void> {
+  const library = openLibrary();
+  const picked = await pickPrompt(library, "Copy a prompt to the clipboard");
+  if (!picked) return;
+  await copyPromptToken(picked.token);
 }
 
 async function searchPrompt(): Promise<void> {
@@ -279,6 +290,13 @@ async function deletePrompt(treeProvider: PromptTreeDataProvider, item?: PromptT
 export function activate(context: vscode.ExtensionContext): void {
   const treeProvider = new PromptTreeDataProvider(openLibrary);
   const documentProvider = new PromptDocumentProvider(openLibrary, () => treeProvider.refresh());
+  const managerDependencies = {
+    openLibrary,
+    refreshTree: () => treeProvider.refresh(),
+    insertPrompt: insertPromptToken,
+    copyPrompt: copyPromptToken,
+    openLibraryFile
+  };
   context.subscriptions.push(
     vscode.workspace.registerFileSystemProvider("promptdeck", documentProvider, { isCaseSensitive: true }),
     vscode.window.registerTreeDataProvider("promptdeck.prompts", treeProvider)
@@ -294,7 +312,8 @@ export function activate(context: vscode.ExtensionContext): void {
     vscode.commands.registerCommand("promptdeck.deletePrompt", (item?: PromptTreeItem) => deletePrompt(treeProvider, item)),
     vscode.commands.registerCommand("promptdeck.importBackup", importBackup),
     vscode.commands.registerCommand("promptdeck.exportBackup", exportBackup),
-    vscode.commands.registerCommand("promptdeck.openLibraryFile", openLibraryFile)
+    vscode.commands.registerCommand("promptdeck.openLibraryFile", openLibraryFile),
+    vscode.commands.registerCommand("promptdeck.openManager", () => PromptDeckManagerPanel.open(context.extensionUri, managerDependencies))
   );
 }
 

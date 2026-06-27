@@ -420,7 +420,7 @@
           <span class="eyebrow">Local-first prompt command center</span>
           <h1>PromptDeck keeps reusable AI prompts one trigger away.</h1>
           <p class="lead">
-            Save prompts locally and reach them where you work: the browser extension's <code>;;</code> helper, a terminal CLI, a VS Code extension, and clipboard access for native desktop apps. One prompt model, one backup format, no account or cloud.
+            Save prompts locally and reach them where you work: the browser extension's <code>;;</code> helper, a terminal CLI, a full VS Code manager, and clipboard access for native desktop apps. One prompt model, one backup format, no account or cloud.
           </p>
           <div class="actions">
             <a class="button primary" href="#quick-start">Get started</a>
@@ -493,7 +493,7 @@ promptdeck edit /commit-message --edit --new-version</code></pre>
           </div>
           <div class="card">
             <h3>VS Code extension</h3>
-            <p>Search, insert, copy, and author prompts through the Command Palette, Quick Pick, and PromptDeck sidebar. Saving <code>promptdeck:</code> documents updates the shared file library.</p>
+            <p>Open an editor-side manager for the central file library, or use the Command Palette, Quick Pick, and PromptDeck sidebar for fast insert/copy workflows. Saving <code>promptdeck:</code> documents updates the same shared file library.</p>
             <pre><code>cd extensions/vscode
 npm run build      # then press F5 to launch</code></pre>
           </div>
@@ -506,7 +506,7 @@ promptdeck pick    # interactive search + copy</code></pre>
         </div>
         <div class="card" style="margin-top: 16px">
           <h3>One library across surfaces</h3>
-          <p>The browser and file stores are separate by design, but the same backup format bridges them. The CLI and VS Code extension already share <code>~/.promptdeck/library.json</code>.</p>
+          <p>The browser and file stores are separate by design, but the same backup format bridges them. The CLI and VS Code extension already share <code>~/.promptdeck/library.json</code>, and the VS Code manager shows the active library path so users know which central library they are editing.</p>
           <pre><code># Seed the file store from a browser backup
 promptdeck import ~/Downloads/promptdeck-backup.json --mode merge-update
 
@@ -543,6 +543,10 @@ promptdeck export promptdeck-from-cli.json</code></pre>
           </div>
         </div>
         <div class="grid" style="margin-top: 16px">
+          <div class="card">
+            <h3>VS Code manager</h3>
+            <p>Run <strong>PromptDeck: Open Manager</strong> to manage the central file library inside VS Code. The manager can create, edit, duplicate, delete, import, export, insert into the active editor, and copy to the clipboard.</p>
+          </div>
           <div class="card">
             <h3>Versions</h3>
             <p>Saves create immutable prompt versions unless the edit is marked as minor. The version rail can set defaults, restore old content as latest, delete older entries, and compare versions line by line.</p>
@@ -614,7 +618,7 @@ Prompt body with {{placeholders}}</code></pre>
                 <td>Prompt library (CLI / VS Code)</td>
                 <td>Seed prompts on first run</td>
                 <td><code>~/.promptdeck/library.json</code></td>
-                <td>Override with <code>PROMPTDECK_LIBRARY</code> or <code>PROMPTDECK_HOME</code>; respects <code>XDG_DATA_HOME</code> and <code>%APPDATA%</code>.</td>
+                <td>Override with <code>PROMPTDECK_LIBRARY</code>, <code>PROMPTDECK_HOME</code>, or the VS Code <code>promptdeck.libraryPath</code> setting; respects <code>XDG_DATA_HOME</code> and <code>%APPDATA%</code>.</td>
               </tr>
               <tr>
                 <td>Backup files</td>
@@ -646,6 +650,10 @@ Prompt body with {{placeholders}}</code></pre>
           <div class="card">
             <h3>Manager UI</h3>
             <p><code>src/options/</code> contains the React dashboard for prompt editing, settings, backups, import previews, versions, variants, and Markdown export.</p>
+          </div>
+          <div class="card">
+            <h3>VS Code manager</h3>
+            <p><code>extensions/vscode/src/managerPanel.ts</code> hosts the Webview manager, and <code>managerBridge.ts</code> routes typed requests back to the shared file-backed <code>PromptLibrary</code>.</p>
           </div>
           <div class="card">
             <h3>Storage</h3>
@@ -681,7 +689,10 @@ npm run typecheck
 npm test
 npm run build
 npm run test:e2e
-npm run package:chrome</code></pre>
+npm run package:chrome
+
+cd extensions/vscode
+npm run build      # bundles extension + manager webview</code></pre>
             <p><code>npm run test:e2e</code> requires <code>dist/manifest.json</code>, so build first.</p>
           </div>
           <div class="card">
@@ -711,6 +722,10 @@ npm run package:chrome</code></pre>
           <div class="card">
             <h3>Save reports a collision</h3>
             <p>Commands and aliases must be unique across prompts. Choose a different command or remove the conflicting alias.</p>
+          </div>
+          <div class="card">
+            <h3>VS Code manager edits the wrong file</h3>
+            <p>Check the path displayed in the manager. By default it uses <code>~/.promptdeck/library.json</code>; override it with <code>promptdeck.libraryPath</code>, <code>PROMPTDECK_LIBRARY</code>, or <code>PROMPTDECK_HOME</code>.</p>
           </div>
         </div>
         <p class="note" style="margin-top: 16px">
