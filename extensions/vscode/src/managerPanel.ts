@@ -36,7 +36,7 @@ export class PromptDeckManagerPanel {
     const panel = vscode.window.createWebviewPanel("promptdeck.manager", "PromptDeck", vscode.ViewColumn.One, {
       enableScripts: true,
       retainContextWhenHidden: true,
-      localResourceRoots: [vscode.Uri.joinPath(extensionUri, "dist", "webview")]
+      localResourceRoots: [vscode.Uri.joinPath(extensionUri, "dist", "webview"), vscode.Uri.joinPath(extensionUri, "resources")]
     });
     PromptDeckManagerPanel.current = new PromptDeckManagerPanel(panel, extensionUri, dependencies);
   }
@@ -50,6 +50,7 @@ export class PromptDeckManagerPanel {
     const webview = this.panel.webview;
     const script = webview.asWebviewUri(vscode.Uri.joinPath(this.extensionUri, "dist", "webview", "manager.js"));
     const styles = webview.asWebviewUri(vscode.Uri.joinPath(this.extensionUri, "dist", "webview", "manager.css"));
+    const logo = webview.asWebviewUri(vscode.Uri.joinPath(this.extensionUri, "resources", "logo.png"));
     const token = nonce();
     const csp = [
       "default-src 'none'",
@@ -69,7 +70,7 @@ export class PromptDeckManagerPanel {
     <title>PromptDeck</title>
   </head>
   <body>
-    <div id="root"></div>
+    <div id="root" data-logo-uri="${logo}"></div>
     <script nonce="${token}" src="${script}"></script>
   </body>
 </html>`;

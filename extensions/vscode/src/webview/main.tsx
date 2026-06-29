@@ -44,6 +44,8 @@ interface VsCodeApi {
 declare const acquireVsCodeApi: () => VsCodeApi;
 
 const vscode = acquireVsCodeApi();
+const root = document.getElementById("root");
+const logoUri = root?.dataset.logoUri || "";
 let sequence = 0;
 const pending = new Map<string, { resolve(value: unknown): void; reject(error: Error): void }>();
 
@@ -118,7 +120,8 @@ function Sidebar({
   onSettings,
   onImport,
   onExport,
-  onOpenLibrary
+  onOpenLibrary,
+  logoUri
 }: {
   prompts: Prompt[];
   selected?: Prompt;
@@ -133,6 +136,7 @@ function Sidebar({
   onImport(file: File, mode: ImportMode): void;
   onExport(): void;
   onOpenLibrary(): void;
+  logoUri: string;
 }) {
   const fileInput = useRef<HTMLInputElement>(null);
   const results = useMemo(() => searchPrompts(prompts, query), [prompts, query]);
@@ -142,7 +146,7 @@ function Sidebar({
     <aside className="pd-sidebar">
       <header className="pd-sidebar-header">
         <div className="pd-brand">
-          <div className="pd-brand-mark">P</div>
+          {logoUri ? <img className="pd-brand-logo" src={logoUri} alt="" aria-hidden="true" /> : <div className="pd-brand-mark">P</div>}
           <div>
             <h1>PromptDeck</h1>
             <p>Central prompt library</p>
@@ -604,6 +608,7 @@ function App() {
           })
         }
         onOpenLibrary={() => void run("Open library", async () => request("LIBRARY_OPEN_FILE"))}
+        logoUri={logoUri}
       />
       {selected ? (
         <>
@@ -642,6 +647,7 @@ function App() {
         </>
       ) : (
         <main className="pd-empty">
+          {logoUri ? <img className="pd-empty-logo" src={logoUri} alt="" aria-hidden="true" /> : null}
           <h2>No prompts yet</h2>
           <Button variant="primary" onClick={() => request<Prompt>("PROMPT_CREATE").then((prompt) => load().then(() => setSelectedId(prompt.id)))}>
             <Plus size={15} /> Create prompt
@@ -652,4 +658,4 @@ function App() {
   );
 }
 
-createRoot(document.getElementById("root")!).render(<App />);
+createRoot(root!).render(<App />);
