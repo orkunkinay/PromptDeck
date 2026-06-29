@@ -1,0 +1,15 @@
+{
+  "version": "2.0.0",
+  "tasks": [
+    {
+      "label": "Build VS Code extension",
+      "type": "npm",
+      "script": "build",
+      "options": {
+        "cwd": "${workspaceFolder}/extensions/vscode"
+      },
+      "problemMatcher": [],
+      "detail": "Bundle the VS Code extension with esbuild"
+    }
+  ]
+}

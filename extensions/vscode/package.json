@@ -95,5 +95,10 @@
     "@types/vscode": "^1.85.0",
     "esbuild": "^0.21.5",
     "typescript": "^5.4.5"
+  },
+  "dependencies": {
+    "lucide-react": "^0.468.0",
+    "react": "^18.2.0",
+    "react-dom": "^18.2.0"
   }
 }
