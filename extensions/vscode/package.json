@@ -5,6 +5,7 @@
   "version": "0.1.0",
   "license": "MIT",
   "publisher": "promptdeck",
+  "icon": "resources/icon-128.png",
   "engines": {
     "vscode": "^1.85.0"
   },
