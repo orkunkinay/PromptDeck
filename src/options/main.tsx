@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { createRoot } from "react-dom/client";
 import "../shared/styles.css";
 import type { Prompt, PromptDeckSettings } from "../shared/models/prompt";
@@ -39,6 +39,8 @@ export function App() {
   const [pendingImport, setPendingImport] = useState<{ fileName: string; plan: ImportPlan } | null>(null);
   const [importMode, setImportMode] = useState<ImportMode>("merge-safe");
   const [replaceConfirmation, setReplaceConfirmation] = useState("");
+  const [creatingPrompt, setCreatingPrompt] = useState(false);
+  const creatingPromptRef = useRef(false);
 
   const selected = prompts.find((prompt) => prompt.id === selectedId) || prompts[0];
   const results = useMemo(() => searchPrompts(prompts, query), [prompts, query]);
@@ -92,10 +94,27 @@ export function App() {
   };
 
   const createPrompt = async () => {
-    const prompt = createPromptFromCommand(nextBlankPromptCommand(prompts));
-    const saved = await sendRuntimeMessage<Prompt>({ type: "PROMPTS_SAVE", prompt, minorEdit: true });
-    await load();
-    setSelectedId(saved.id);
+    if (creatingPromptRef.current) return;
+
+    creatingPromptRef.current = true;
+    setCreatingPrompt(true);
+    setStatus("Creating...");
+
+    try {
+      const latestPrompts = await sendRuntimeMessage<Prompt[]>({ type: "PROMPTS_LIST" });
+      const prompt = createPromptFromCommand(nextBlankPromptCommand(latestPrompts));
+      const saved = await sendRuntimeMessage<Prompt>({ type: "PROMPTS_SAVE", prompt, minorEdit: true });
+      await load();
+      setSelectedId(saved.id);
+      setQuery("");
+      setStatus("Created locally");
+      window.setTimeout(() => setStatus(""), 1200);
+    } catch (error) {
+      setStatus(error instanceof Error ? error.message : "Create failed");
+    } finally {
+      creatingPromptRef.current = false;
+      setCreatingPrompt(false);
+    }
   };
 
   const deletePrompt = async (id: string) => {
@@ -169,6 +188,7 @@ export function App() {
           onQuery={setQuery}
           onSelect={setSelectedId}
           onCreate={createPrompt}
+          creatingPrompt={creatingPrompt}
           onSettings={(patch) => void updateSettings(patch)}
           onExportBackup={exportBackup}
           onExportMarkdown={() => selected && download(selected.id + ".md", promptToMarkdown(selected))}

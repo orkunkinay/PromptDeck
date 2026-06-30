@@ -10,6 +10,7 @@ import type { Prompt, PromptDeckSettings } from "../shared/models/prompt";
 import { searchPrompts } from "../shared/search/fuzzySearch";
 import { defaultSettings } from "../shared/settings/defaultSettings";
 import { SETTINGS_KEY } from "../shared/settings/settingsService";
+import { createPromptFromCommand } from "../shared/storage/promptRepository";
 import { PROMPTDECK_STATE_KEY } from "../shared/state/stateInvalidation";
 
 (globalThis as typeof globalThis & { IS_REACT_ACT_ENVIRONMENT: boolean }).IS_REACT_ACT_ENVIRONMENT = true;
@@ -60,11 +61,21 @@ async function flushPromises(): Promise<void> {
   await Promise.resolve();
 }
 
-function installChromeMock(getPrompts: () => Prompt[], getSettings: () => PromptDeckSettings = () => defaultSettings) {
+type RuntimeTestMessage = { type: string; prompt?: Prompt };
+type RuntimeTestResponse = { ok: boolean; data?: unknown };
+
+function installChromeMock(
+  getPrompts: () => Prompt[],
+  getSettings: () => PromptDeckSettings = () => defaultSettings,
+  handleRuntimeMessage?: (message: RuntimeTestMessage) => RuntimeTestResponse | undefined
+) {
   const storageListeners = new Set<(changes: Record<string, chrome.storage.StorageChange>, areaName: string) => void>();
-  const sendMessage = vi.fn((message: { type: string }, callback: (response: { ok: boolean; data?: unknown }) => void) => {
-    if (message.type === "PROMPTS_LIST") callback({ ok: true, data: getPrompts() });
+  const sendMessage = vi.fn((message: RuntimeTestMessage, callback: (response: RuntimeTestResponse) => void) => {
+    const handled = handleRuntimeMessage?.(message);
+    if (handled) callback(handled);
+    else if (message.type === "PROMPTS_LIST") callback({ ok: true, data: getPrompts() });
     else if (message.type === "SETTINGS_GET") callback({ ok: true, data: getSettings() });
+    else if (message.type === "PROMPTS_SAVE" && message.prompt) callback({ ok: true, data: message.prompt });
     else callback({ ok: true });
   });
 
@@ -193,5 +204,45 @@ describe("options manager", () => {
 
     expect(chromeMock.sendMessage).toHaveBeenCalledTimes(4);
     expect(container.textContent).toContain("Summary Prompt");
+  });
+
+  it("creates prompts from the latest runtime list and clears active search", async () => {
+    let prompts = [prompt("paper", "Paper Prompt", "/paper")];
+    const savedCommands: string[] = [];
+    installChromeMock(
+      () => prompts,
+      () => defaultSettings,
+      (message) => {
+        if (message.type !== "PROMPTS_SAVE" || !message.prompt) return undefined;
+        savedCommands.push(message.prompt.command);
+        prompts = [message.prompt, ...prompts];
+        return { ok: true, data: message.prompt };
+      }
+    );
+    root = createRoot(container);
+
+    await act(async () => {
+      root?.render(<App />);
+      await flushPromises();
+    });
+
+    const searchInput = container.querySelector<HTMLInputElement>("[aria-label='Search prompts']");
+    expect(searchInput).toBeTruthy();
+
+    await act(async () => {
+      searchInput!.value = "paper";
+      searchInput!.dispatchEvent(new Event("input", { bubbles: true }));
+    });
+
+    prompts = [createPromptFromCommand("/new-prompt"), ...prompts];
+
+    await act(async () => {
+      container.querySelector<HTMLButtonElement>("[aria-label='New prompt']")?.click();
+      await flushPromises();
+    });
+
+    expect(savedCommands).toEqual(["/new-prompt-2"]);
+    expect(searchInput!.value).toBe("");
+    expect(container.textContent).toContain("New Prompt 2");
   });
 });
