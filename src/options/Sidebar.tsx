@@ -10,6 +10,7 @@ export function Sidebar({
   query,
   settings,
   status,
+  creatingPrompt,
   onQuery,
   onSelect,
   onCreate,
@@ -25,6 +26,7 @@ export function Sidebar({
   query: string;
   settings: PromptDeckSettings;
   status: string;
+  creatingPrompt?: boolean;
   onQuery(value: string): void;
   onSelect(id: string): void;
   onCreate(): void;
@@ -52,7 +54,7 @@ export function Sidebar({
             <Search className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-[var(--pd-text-muted)]" size={16} />
             <TextInput value={query} onChange={(event) => onQuery(event.target.value)} placeholder="Search prompts" className="pl-9" aria-label="Search prompts" />
           </div>
-          <Button variant="primary" onClick={onCreate} aria-label="New prompt">
+          <Button variant="primary" onClick={onCreate} aria-label="New prompt" disabled={creatingPrompt}>
             <Plus size={16} />
           </Button>
         </div>
