@@ -3,23 +3,36 @@
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>PromptDeck Documentation</title>
+    <meta
+      name="description"
+      content="PromptDeck is the local-first prompt command center for browser, terminal, VS Code, and desktop workflows."
+    />
+    <meta name="theme-color" content="#07111f" />
+    <title>PromptDeck — Your prompt infrastructure, everywhere</title>
     <style>
       :root {
         color-scheme: light;
-        --bg: #f7f8fb;
+        --navy-950: #06101e;
+        --navy-900: #0a1728;
+        --navy-800: #10243b;
+        --blue-700: #175cd3;
+        --blue-600: #2563eb;
+        --blue-500: #3984ff;
+        --blue-100: #dcecff;
+        --cyan-300: #67e8f9;
+        --ink: #0b1628;
+        --body: #42526a;
+        --muted: #6d7c92;
+        --line: #dde4ed;
+        --line-dark: rgba(255, 255, 255, 0.12);
         --surface: #ffffff;
-        --surface-muted: #eef2f7;
-        --text: #172033;
-        --muted: #5c677a;
-        --border: #d9e0ea;
-        --primary: #2563eb;
-        --primary-dark: #1e3a8a;
-        --green: #0f766e;
-        --amber: #a16207;
-        --ink: #111827;
-        --code-bg: #111827;
-        --code-text: #e5e7eb;
+        --surface-soft: #f5f7fb;
+        --surface-blue: #edf5ff;
+        --success: #12b76a;
+        --warning: #f79009;
+        --max: 1200px;
+        --shadow-sm: 0 1px 2px rgba(6, 16, 30, 0.05);
+        --shadow-lg: 0 28px 80px rgba(5, 20, 43, 0.22);
       }
 
       * {
@@ -28,749 +41,1896 @@
 
       html {
         scroll-behavior: smooth;
+        scroll-padding-top: 92px;
       }
 
       body {
         margin: 0;
-        background: var(--bg);
-        color: var(--text);
+        background: var(--surface);
+        color: var(--body);
         font-family:
-          Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+          Inter, ui-sans-serif, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
         font-size: 16px;
-        line-height: 1.6;
+        line-height: 1.65;
+        -webkit-font-smoothing: antialiased;
       }
 
       a {
-        color: var(--primary);
+        color: inherit;
         text-decoration: none;
       }
 
-      a:hover {
-        text-decoration: underline;
+      a:focus-visible,
+      button:focus-visible {
+        outline: 3px solid var(--cyan-300);
+        outline-offset: 3px;
       }
 
-      img,
-      video {
+      img {
         display: block;
         max-width: 100%;
       }
 
+      button {
+        font: inherit;
+      }
+
+      .container {
+        width: min(calc(100% - 48px), var(--max));
+        margin-inline: auto;
+      }
+
       .site-header {
-        position: sticky;
-        top: 0;
-        z-index: 10;
-        border-bottom: 1px solid var(--border);
-        background: rgba(255, 255, 255, 0.94);
-        backdrop-filter: blur(12px);
+        position: fixed;
+        inset: 0 0 auto;
+        z-index: 50;
+        border-bottom: 1px solid rgba(255, 255, 255, 0.09);
+        background: rgba(6, 16, 30, 0.86);
+        backdrop-filter: blur(18px);
       }
 
       .header-inner {
         display: flex;
-        min-height: 64px;
-        max-width: 1180px;
-        margin: 0 auto;
-        padding: 0 24px;
+        min-height: 76px;
         align-items: center;
+        justify-content: space-between;
+        gap: 28px;
+      }
+
+      .brand {
+        display: inline-flex;
+        align-items: center;
+        gap: 11px;
+        color: #ffffff;
+        font-size: 19px;
+        font-weight: 760;
+        letter-spacing: -0.03em;
+      }
+
+      .brand img {
+        width: 34px;
+        height: 34px;
+        object-fit: contain;
+      }
+
+      .brand-badge {
+        border: 1px solid rgba(255, 255, 255, 0.16);
+        border-radius: 999px;
+        color: #aebdd0;
+        padding: 2px 8px;
+        font-size: 10px;
+        font-weight: 700;
+        letter-spacing: 0.08em;
+        text-transform: uppercase;
+      }
+
+      .nav-wrap,
+      .main-nav,
+      .header-actions {
+        display: flex;
+        align-items: center;
+      }
+
+      .nav-wrap {
+        flex: 1;
         justify-content: space-between;
         gap: 24px;
       }
 
-      .brand {
-        display: flex;
-        align-items: center;
-        gap: 12px;
-        min-width: 0;
+      .main-nav {
+        margin-left: auto;
+        gap: 28px;
       }
 
-      .brand img {
-        width: 36px;
-        height: 36px;
-        border-radius: 8px;
-      }
-
-      .brand strong {
-        display: block;
-        color: var(--ink);
-        font-size: 15px;
-        line-height: 1.2;
-      }
-
-      .brand span {
-        display: block;
-        color: var(--muted);
-        font-size: 12px;
-        line-height: 1.2;
-      }
-
-      nav {
-        display: flex;
-        flex-wrap: wrap;
-        justify-content: flex-end;
-        gap: 6px 16px;
+      .main-nav a {
+        color: #b9c6d6;
         font-size: 14px;
+        font-weight: 550;
+        transition: color 160ms ease;
       }
 
-      nav a {
-        color: var(--muted);
+      .main-nav a:hover {
+        color: #ffffff;
       }
 
-      .hero {
-        border-bottom: 1px solid var(--border);
-        background: #ffffff;
-      }
-
-      .hero-inner {
-        display: grid;
-        grid-template-columns: minmax(0, 0.9fr) minmax(420px, 1.1fr);
-        max-width: 1180px;
-        margin: 0 auto;
-        padding: 56px 24px 40px;
-        gap: 36px;
-        align-items: center;
-      }
-
-      .eyebrow {
-        display: inline-flex;
-        width: fit-content;
-        margin-bottom: 16px;
-        border: 1px solid #b7d7d3;
-        border-radius: 999px;
-        background: #e8f5f3;
-        color: var(--green);
-        padding: 4px 10px;
-        font-size: 12px;
-        font-weight: 700;
-        line-height: 1.2;
-      }
-
-      h1,
-      h2,
-      h3 {
-        margin: 0;
-        color: var(--ink);
-        line-height: 1.15;
-      }
-
-      h1 {
-        max-width: 760px;
-        font-size: clamp(2.25rem, 5vw, 4.75rem);
-        letter-spacing: 0;
-      }
-
-      h2 {
-        font-size: clamp(1.6rem, 3vw, 2.25rem);
-      }
-
-      h3 {
-        font-size: 1rem;
-      }
-
-      .lead {
-        max-width: 680px;
-        margin: 18px 0 0;
-        color: var(--muted);
-        font-size: 18px;
-      }
-
-      .actions {
-        display: flex;
-        flex-wrap: wrap;
-        margin-top: 28px;
-        gap: 12px;
+      .header-actions {
+        gap: 10px;
+        margin-left: 22px;
       }
 
       .button {
         display: inline-flex;
-        min-height: 42px;
+        min-height: 44px;
         align-items: center;
         justify-content: center;
-        border: 1px solid var(--border);
-        border-radius: 8px;
+        gap: 9px;
+        border: 1px solid var(--line);
+        border-radius: 9px;
         background: var(--surface);
         color: var(--ink);
-        padding: 9px 14px;
+        padding: 10px 17px;
+        font-size: 14px;
+        font-weight: 700;
+        line-height: 1;
+        box-shadow: var(--shadow-sm);
+        transition:
+          transform 160ms ease,
+          box-shadow 160ms ease,
+          border-color 160ms ease;
+      }
+
+      .button:hover {
+        transform: translateY(-1px);
+        border-color: #c4cfdd;
+        box-shadow: 0 6px 18px rgba(6, 16, 30, 0.11);
+      }
+
+      .button.primary {
+        border-color: var(--blue-600);
+        background: var(--blue-600);
+        color: #ffffff;
+      }
+
+      .button.ghost-dark {
+        border-color: rgba(255, 255, 255, 0.18);
+        background: rgba(255, 255, 255, 0.05);
+        color: #ffffff;
+        box-shadow: none;
+      }
+
+      .button.small {
+        min-height: 38px;
+        padding: 8px 13px;
+        font-size: 13px;
+      }
+
+      .icon {
+        width: 17px;
+        height: 17px;
+        flex: 0 0 auto;
+      }
+
+      .menu-button {
+        display: none;
+        width: 42px;
+        height: 42px;
+        align-items: center;
+        justify-content: center;
+        border: 1px solid rgba(255, 255, 255, 0.16);
+        border-radius: 9px;
+        background: rgba(255, 255, 255, 0.06);
+        color: #ffffff;
+      }
+
+      .hero {
+        position: relative;
+        overflow: hidden;
+        background:
+          radial-gradient(circle at 82% 20%, rgba(37, 99, 235, 0.28), transparent 28%),
+          radial-gradient(circle at 10% 72%, rgba(13, 148, 136, 0.12), transparent 27%),
+          var(--navy-950);
+        color: #ffffff;
+        padding: 160px 0 84px;
+      }
+
+      .hero::before {
+        position: absolute;
+        inset: 0;
+        background-image:
+          linear-gradient(rgba(255, 255, 255, 0.035) 1px, transparent 1px),
+          linear-gradient(90deg, rgba(255, 255, 255, 0.035) 1px, transparent 1px);
+        background-size: 64px 64px;
+        content: "";
+        mask-image: linear-gradient(to bottom, black, transparent 78%);
+        pointer-events: none;
+      }
+
+      .hero-grid {
+        position: relative;
+        display: grid;
+        grid-template-columns: minmax(0, 0.86fr) minmax(500px, 1.14fr);
+        align-items: center;
+        gap: 70px;
+      }
+
+      .eyebrow {
+        display: inline-flex;
+        align-items: center;
+        gap: 9px;
+        margin-bottom: 22px;
+        border: 1px solid rgba(103, 232, 249, 0.28);
+        border-radius: 999px;
+        background: rgba(103, 232, 249, 0.08);
+        color: #b5f5ff;
+        padding: 6px 11px;
+        font-size: 12px;
+        font-weight: 700;
+        letter-spacing: 0.035em;
+      }
+
+      .eyebrow-dot {
+        width: 7px;
+        height: 7px;
+        border-radius: 50%;
+        background: var(--cyan-300);
+        box-shadow: 0 0 0 4px rgba(103, 232, 249, 0.1);
+      }
+
+      h1,
+      h2,
+      h3,
+      h4 {
+        margin: 0;
+        color: var(--ink);
+        font-weight: 740;
+        line-height: 1.12;
+        letter-spacing: -0.035em;
+      }
+
+      h1 {
+        color: #ffffff;
+        font-size: clamp(3rem, 5.8vw, 5.2rem);
+        letter-spacing: -0.055em;
+      }
+
+      .gradient-text {
+        background: linear-gradient(90deg, #ffffff 5%, #8cc4ff 55%, #80f0ec);
+        background-clip: text;
+        -webkit-background-clip: text;
+        color: transparent;
+      }
+
+      .hero-copy {
+        max-width: 630px;
+        margin: 24px 0 0;
+        color: #afbdce;
+        font-size: 19px;
+        line-height: 1.62;
+      }
+
+      .hero-actions {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 12px;
+        margin-top: 34px;
+      }
+
+      .hero-note {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 17px;
+        margin-top: 24px;
+        color: #8495aa;
+        font-size: 12px;
+      }
+
+      .hero-note span {
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+      }
+
+      .hero-note svg {
+        color: #62d6c4;
+      }
+
+      .product-frame {
+        position: relative;
+        padding: 1px;
+        border-radius: 16px;
+        background: linear-gradient(140deg, rgba(117, 177, 255, 0.55), rgba(255, 255, 255, 0.08) 35%, rgba(103, 232, 249, 0.32));
+        box-shadow: var(--shadow-lg);
+      }
+
+      .product-frame::before {
+        position: absolute;
+        inset: 15% 10%;
+        z-index: -1;
+        border-radius: 50%;
+        background: rgba(37, 99, 235, 0.28);
+        content: "";
+        filter: blur(50px);
+      }
+
+      .browser-chrome {
+        overflow: hidden;
+        border-radius: 15px;
+        background: #0d1929;
+      }
+
+      .window-bar {
+        display: flex;
+        height: 38px;
+        align-items: center;
+        gap: 6px;
+        border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+        padding: 0 14px;
+      }
+
+      .window-bar i {
+        width: 8px;
+        height: 8px;
+        border-radius: 50%;
+        background: #32445b;
+      }
+
+      .window-bar span {
+        margin-left: auto;
+        color: #667990;
+        font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+        font-size: 9px;
+      }
+
+      .product-frame img {
+        width: 100%;
+        aspect-ratio: 1.84 / 1;
+        object-fit: cover;
+        object-position: top;
+      }
+
+      .terminal-card {
+        position: absolute;
+        right: -26px;
+        bottom: -30px;
+        width: min(320px, 58%);
+        overflow: hidden;
+        border: 1px solid rgba(255, 255, 255, 0.14);
+        border-radius: 12px;
+        background: rgba(7, 17, 31, 0.96);
+        box-shadow: 0 24px 50px rgba(0, 0, 0, 0.36);
+        color: #b8c5d5;
+        font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+        font-size: 11px;
+        line-height: 1.7;
+      }
+
+      .terminal-head {
+        border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+        color: #71839a;
+        padding: 7px 12px;
+        font-size: 9px;
+        letter-spacing: 0.08em;
+        text-transform: uppercase;
+      }
+
+      .terminal-body {
+        padding: 11px 14px 13px;
+      }
+
+      .terminal-body p {
+        margin: 0;
+      }
+
+      .terminal-body .prompt {
+        color: #68e0cb;
+      }
+
+      .terminal-body .result {
+        color: #ffffff;
+      }
+
+      .trust-strip {
+        border-bottom: 1px solid var(--line);
+        background: #ffffff;
+      }
+
+      .trust-inner {
+        display: grid;
+        grid-template-columns: 1.15fr repeat(4, 1fr);
+        min-height: 112px;
+        align-items: center;
+        gap: 22px;
+      }
+
+      .trust-label {
+        max-width: 190px;
+        color: var(--muted);
+        font-size: 12px;
+        font-weight: 700;
+        letter-spacing: 0.08em;
+        line-height: 1.45;
+        text-transform: uppercase;
+      }
+
+      .team-type {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        color: #5e6d82;
         font-size: 14px;
         font-weight: 700;
       }
 
-      .button.primary {
-        border-color: var(--primary);
-        background: var(--primary);
+      .team-type svg {
+        color: #8b9bb0;
+      }
+
+      .section {
+        padding: 112px 0;
+      }
+
+      .section.soft {
+        background: var(--surface-soft);
+      }
+
+      .section.dark {
+        position: relative;
+        overflow: hidden;
+        background: var(--navy-950);
+        color: #adbbcc;
+      }
+
+      .section-kicker {
+        margin: 0 0 14px;
+        color: var(--blue-600);
+        font-size: 12px;
+        font-weight: 800;
+        letter-spacing: 0.11em;
+        text-transform: uppercase;
+      }
+
+      .dark .section-kicker {
+        color: #77b2ff;
+      }
+
+      .section-title {
+        max-width: 780px;
+        font-size: clamp(2.25rem, 4vw, 3.5rem);
+      }
+
+      .dark .section-title {
         color: #ffffff;
       }
 
-      .hero-shot {
-        overflow: hidden;
-        border: 1px solid var(--border);
-        border-radius: 8px;
-        background: var(--surface-muted);
-        box-shadow: 0 24px 60px rgba(23, 32, 51, 0.18);
-      }
-
-      .hero-shot img {
-        width: 100%;
-      }
-
-      main {
-        max-width: 1180px;
-        margin: 0 auto;
-        padding: 42px 24px 64px;
-      }
-
-      section {
-        padding: 34px 0;
-        border-bottom: 1px solid var(--border);
-      }
-
-      section:last-child {
-        border-bottom: 0;
-      }
-
-      .section-head {
-        display: flex;
-        align-items: end;
-        justify-content: space-between;
-        gap: 24px;
-        margin-bottom: 20px;
-      }
-
-      .section-head p {
-        max-width: 620px;
-        margin: 8px 0 0;
+      .section-lead {
+        max-width: 660px;
+        margin: 20px 0 0;
         color: var(--muted);
+        font-size: 18px;
       }
 
-      .grid {
+      .dark .section-lead {
+        color: #94a5ba;
+      }
+
+      .outcome-grid {
         display: grid;
-        grid-template-columns: repeat(3, minmax(0, 1fr));
+        grid-template-columns: repeat(3, 1fr);
+        gap: 18px;
+        margin-top: 52px;
+      }
+
+      .outcome-card {
+        position: relative;
+        min-height: 310px;
+        overflow: hidden;
+        border: 1px solid var(--line);
+        border-radius: 16px;
+        background: #ffffff;
+        padding: 30px;
+        box-shadow: var(--shadow-sm);
+      }
+
+      .outcome-card.featured {
+        border-color: #c8dcff;
+        background: linear-gradient(145deg, #f7fbff, #eaf3ff);
+      }
+
+      .card-icon {
+        display: grid;
+        width: 44px;
+        height: 44px;
+        place-items: center;
+        border: 1px solid #cfddf0;
+        border-radius: 11px;
+        background: #eff5fd;
+        color: var(--blue-600);
+      }
+
+      .outcome-card h3,
+      .platform-card h3,
+      .security-card h3 {
+        margin-top: 24px;
+        font-size: 21px;
+      }
+
+      .outcome-card p,
+      .platform-card p,
+      .security-card p {
+        margin: 12px 0 0;
+        color: var(--muted);
+        font-size: 14px;
+      }
+
+      .prompt-search-demo {
+        position: absolute;
+        inset: auto 25px 25px;
+        overflow: hidden;
+        border: 1px solid #d9e3ef;
+        border-radius: 10px;
+        background: #ffffff;
+        box-shadow: 0 15px 35px rgba(19, 52, 91, 0.1);
+      }
+
+      .demo-input {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        border-bottom: 1px solid #e6ebf1;
+        padding: 10px 12px;
+        color: var(--ink);
+        font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+        font-size: 12px;
+      }
+
+      .demo-input b {
+        color: var(--blue-600);
+      }
+
+      .demo-result {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 10px;
+        padding: 11px 12px;
+        color: var(--body);
+        font-size: 11px;
+      }
+
+      .demo-result span:last-child {
+        border: 1px solid #dce3ec;
+        border-radius: 4px;
+        padding: 1px 5px;
+        color: var(--muted);
+        font-size: 9px;
+      }
+
+      .version-demo {
+        position: absolute;
+        inset: auto 28px 30px;
+        display: flex;
+        align-items: center;
+        gap: 10px;
+      }
+
+      .version-demo span {
+        display: inline-flex;
+        height: 34px;
+        align-items: center;
+        border: 1px solid #d7e0eb;
+        border-radius: 999px;
+        background: #ffffff;
+        color: var(--muted);
+        padding: 0 12px;
+        font-size: 11px;
+        font-weight: 700;
+      }
+
+      .version-demo span:first-child {
+        border-color: #9fc2ff;
+        background: var(--blue-600);
+        color: #ffffff;
+      }
+
+      .data-demo {
+        position: absolute;
+        inset: auto 28px 30px;
+        display: grid;
+        grid-template-columns: repeat(2, 1fr);
+        gap: 8px;
+      }
+
+      .data-demo span {
+        display: flex;
+        align-items: center;
+        gap: 7px;
+        border: 1px solid #d7e0eb;
+        border-radius: 8px;
+        background: rgba(255, 255, 255, 0.8);
+        color: var(--body);
+        padding: 8px 10px;
+        font-size: 10px;
+        font-weight: 650;
+      }
+
+      .data-demo i {
+        width: 7px;
+        height: 7px;
+        border-radius: 50%;
+        background: var(--success);
+      }
+
+      .platform-layout {
+        display: grid;
+        grid-template-columns: 0.8fr 1.2fr;
+        align-items: start;
+        gap: 80px;
+      }
+
+      .platform-copy {
+        position: sticky;
+        top: 120px;
+      }
+
+      .platform-grid {
+        display: grid;
+        grid-template-columns: repeat(2, 1fr);
         gap: 16px;
       }
 
-      .two-col {
-        display: grid;
-        grid-template-columns: repeat(2, minmax(0, 1fr));
-        gap: 24px;
+      .platform-card {
+        min-height: 240px;
+        border: 1px solid var(--line);
+        border-radius: 15px;
+        background: #ffffff;
+        padding: 26px;
       }
 
-      .card {
-        border: 1px solid var(--border);
+      .platform-card .label {
+        display: inline-flex;
+        align-items: center;
+        gap: 7px;
+        color: var(--blue-600);
+        font-size: 11px;
+        font-weight: 800;
+        letter-spacing: 0.08em;
+        text-transform: uppercase;
+      }
+
+      .platform-card code,
+      .inline-code {
+        border: 1px solid #dce4ee;
+        border-radius: 5px;
+        background: #f2f5f8;
+        color: #19324f;
+        padding: 0.12em 0.38em;
+        font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+        font-size: 0.9em;
+      }
+
+      .platform-command {
+        margin-top: 22px;
         border-radius: 8px;
-        background: var(--surface);
+        background: #0d1c2f;
+        color: #c6d2df;
+        padding: 10px 12px;
+        font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+        font-size: 10px;
+      }
+
+      .platform-command b {
+        color: #66e1cc;
+      }
+
+      .security-grid {
+        display: grid;
+        grid-template-columns: 1.05fr repeat(3, 1fr);
+        gap: 18px;
+        margin-top: 50px;
+      }
+
+      .security-intro {
+        min-height: 270px;
+        border: 1px solid rgba(103, 232, 249, 0.24);
+        border-radius: 16px;
+        background: linear-gradient(145deg, rgba(37, 99, 235, 0.2), rgba(103, 232, 249, 0.04));
+        padding: 28px;
+      }
+
+      .security-intro .lock {
+        display: grid;
+        width: 52px;
+        height: 52px;
+        place-items: center;
+        border: 1px solid rgba(103, 232, 249, 0.35);
+        border-radius: 14px;
+        background: rgba(103, 232, 249, 0.08);
+        color: #a5f3fc;
+      }
+
+      .security-intro h3 {
+        margin-top: 30px;
+        color: #ffffff;
+        font-size: 25px;
+      }
+
+      .security-intro p {
+        margin: 12px 0 0;
+        color: #9eb0c4;
+        font-size: 14px;
+      }
+
+      .security-card {
+        min-height: 270px;
+        border: 1px solid var(--line-dark);
+        border-radius: 16px;
+        background: rgba(255, 255, 255, 0.035);
+        padding: 26px;
+      }
+
+      .security-card .number {
+        color: #5f7794;
+        font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+        font-size: 11px;
+      }
+
+      .security-card h3 {
+        color: #ffffff;
+        font-size: 19px;
+      }
+
+      .security-card p {
+        color: #8fa2b8;
+      }
+
+      .docs-section {
+        padding: 108px 0 120px;
+        background: #ffffff;
+      }
+
+      .docs-header {
+        display: flex;
+        align-items: end;
+        justify-content: space-between;
+        gap: 30px;
+        margin-bottom: 48px;
+      }
+
+      .docs-header .section-lead {
+        max-width: 540px;
+        margin-top: 13px;
+      }
+
+      .docs-shell {
+        display: grid;
+        grid-template-columns: 220px minmax(0, 1fr);
+        gap: 52px;
+        border-top: 1px solid var(--line);
+        padding-top: 38px;
+      }
+
+      .docs-sidebar {
+        position: sticky;
+        top: 108px;
+        align-self: start;
+      }
+
+      .docs-nav-group + .docs-nav-group {
+        margin-top: 26px;
+      }
+
+      .docs-nav-label {
+        display: block;
+        margin-bottom: 9px;
+        color: var(--ink);
+        font-size: 11px;
+        font-weight: 800;
+        letter-spacing: 0.08em;
+        text-transform: uppercase;
+      }
+
+      .docs-sidebar a {
+        display: block;
+        border-left: 1px solid var(--line);
+        color: var(--muted);
+        padding: 6px 0 6px 14px;
+        font-size: 13px;
+        line-height: 1.35;
+      }
+
+      .docs-sidebar a:hover {
+        border-color: var(--blue-600);
+        color: var(--blue-600);
+      }
+
+      .docs-content {
+        min-width: 0;
+      }
+
+      .doc-block {
+        max-width: 860px;
+        padding: 10px 0 56px;
+        border-bottom: 1px solid var(--line);
+        scroll-margin-top: 96px;
+      }
+
+      .doc-block + .doc-block {
+        padding-top: 56px;
+      }
+
+      .doc-block:last-child {
+        border-bottom: 0;
+      }
+
+      .doc-block h3 {
+        font-size: 30px;
+      }
+
+      .doc-block h4 {
+        margin-top: 31px;
+        font-size: 17px;
+      }
+
+      .doc-block > p {
+        max-width: 750px;
+        margin: 12px 0 0;
+        color: var(--body);
+      }
+
+      .step-grid {
+        display: grid;
+        grid-template-columns: repeat(3, 1fr);
+        gap: 14px;
+        margin-top: 28px;
+      }
+
+      .step {
+        border: 1px solid var(--line);
+        border-radius: 11px;
+        background: var(--surface-soft);
         padding: 18px;
       }
 
-      .card p,
-      .card ul,
-      .card ol {
-        margin: 10px 0 0;
-        color: var(--muted);
+      .step-number {
+        display: grid;
+        width: 25px;
+        height: 25px;
+        place-items: center;
+        border-radius: 7px;
+        background: var(--blue-600);
+        color: #ffffff;
+        font-size: 11px;
+        font-weight: 800;
       }
 
-      .card ul,
-      .card ol {
-        padding-left: 20px;
-      }
-
-      .media-card {
-        overflow: hidden;
-        border: 1px solid var(--border);
-        border-radius: 8px;
-        background: var(--surface);
-      }
-
-      .media-card img {
-        width: 100%;
-        border-bottom: 1px solid var(--border);
-      }
-
-      .media-card div {
-        padding: 14px 16px 16px;
-      }
-
-      .media-card p {
-        margin: 6px 0 0;
-        color: var(--muted);
-        font-size: 14px;
-      }
-
-      code {
-        border-radius: 6px;
-        background: #e9edf4;
+      .step strong {
+        display: block;
+        margin-top: 13px;
         color: var(--ink);
-        padding: 0.12em 0.38em;
-        font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", monospace;
-        font-size: 0.92em;
+        font-size: 13px;
+      }
+
+      .step p {
+        margin: 5px 0 0;
+        color: var(--muted);
+        font-size: 12px;
+      }
+
+      .code-block {
+        position: relative;
+        overflow: hidden;
+        margin-top: 18px;
+        border: 1px solid #1f354d;
+        border-radius: 11px;
+        background: #081524;
+        color: #c9d6e4;
+      }
+
+      .code-label {
+        display: flex;
+        min-height: 36px;
+        align-items: center;
+        justify-content: space-between;
+        border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+        color: #6f8298;
+        padding: 0 12px 0 16px;
+        font-size: 10px;
+        font-weight: 700;
+        letter-spacing: 0.08em;
+        text-transform: uppercase;
+      }
+
+      .copy-button {
+        border: 0;
+        border-radius: 5px;
+        background: transparent;
+        color: #8294aa;
+        padding: 4px 7px;
+        cursor: pointer;
+        font-size: 10px;
+      }
+
+      .copy-button:hover {
+        background: rgba(255, 255, 255, 0.07);
+        color: #ffffff;
       }
 
       pre {
-        overflow: auto;
-        margin: 14px 0 0;
-        border-radius: 8px;
-        background: var(--code-bg);
-        color: var(--code-text);
-        padding: 16px;
-        font-size: 13px;
-        line-height: 1.55;
+        overflow-x: auto;
+        margin: 0;
+        padding: 18px;
+        font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+        font-size: 12px;
+        line-height: 1.7;
+        tab-size: 2;
       }
 
       pre code {
-        background: transparent;
         color: inherit;
-        padding: 0;
+        font-family: inherit;
       }
 
-      .table-wrap {
-        overflow-x: auto;
-        border: 1px solid var(--border);
-        border-radius: 8px;
-        background: var(--surface);
+      .token-command {
+        color: #63e6be;
       }
 
-      table {
+      .token-key {
+        color: #82b1ff;
+      }
+
+      .token-value {
+        color: #ffd37a;
+      }
+
+      .doc-callout {
+        display: flex;
+        gap: 12px;
+        margin-top: 20px;
+        border: 1px solid #bfd7ff;
+        border-radius: 9px;
+        background: var(--surface-blue);
+        color: #26496f;
+        padding: 14px 16px;
+        font-size: 13px;
+      }
+
+      .doc-callout svg {
+        flex: 0 0 auto;
+        color: var(--blue-600);
+      }
+
+      .feature-table {
         width: 100%;
-        min-width: 680px;
-        border-collapse: collapse;
-        font-size: 14px;
+        margin-top: 22px;
+        border: 1px solid var(--line);
+        border-radius: 10px;
+        border-spacing: 0;
+        overflow: hidden;
+        font-size: 13px;
       }
 
-      th,
-      td {
-        padding: 12px 14px;
-        border-bottom: 1px solid var(--border);
+      .feature-table th,
+      .feature-table td {
+        border-bottom: 1px solid var(--line);
+        padding: 12px 15px;
         text-align: left;
         vertical-align: top;
       }
 
-      th {
-        background: var(--surface-muted);
+      .feature-table th {
+        background: var(--surface-soft);
         color: var(--ink);
+        font-size: 11px;
+        letter-spacing: 0.04em;
+        text-transform: uppercase;
       }
 
-      tr:last-child td {
+      .feature-table td:first-child {
+        color: var(--ink);
+        font-weight: 700;
+      }
+
+      .feature-table tr:last-child td {
         border-bottom: 0;
       }
 
-      .note {
-        border-left: 4px solid var(--amber);
-        background: #fff8e6;
-        padding: 14px 16px;
-        color: #633d05;
+      .architecture-flow {
+        display: grid;
+        grid-template-columns: repeat(4, 1fr);
+        align-items: stretch;
+        gap: 8px;
+        margin-top: 24px;
       }
 
-      .footer {
-        border-top: 1px solid var(--border);
-        background: var(--surface);
+      .flow-node {
+        position: relative;
+        border: 1px solid var(--line);
+        border-radius: 9px;
+        background: var(--surface-soft);
+        padding: 15px;
       }
 
-      .footer-inner {
-        max-width: 1180px;
-        margin: 0 auto;
-        padding: 22px 24px;
+      .flow-node:not(:last-child)::after {
+        position: absolute;
+        top: 50%;
+        right: -9px;
+        z-index: 2;
+        width: 9px;
+        color: #9aabc0;
+        content: "→";
+        transform: translateY(-50%);
+      }
+
+      .flow-node strong {
+        display: block;
+        color: var(--ink);
+        font-size: 12px;
+      }
+
+      .flow-node span {
+        display: block;
+        margin-top: 5px;
         color: var(--muted);
-        font-size: 14px;
+        font-size: 10px;
+        line-height: 1.45;
       }
 
-      @media (max-width: 900px) {
-        .header-inner {
-          align-items: flex-start;
+      .trouble-list {
+        display: grid;
+        gap: 11px;
+        margin-top: 24px;
+      }
+
+      details {
+        border: 1px solid var(--line);
+        border-radius: 9px;
+        background: #ffffff;
+        padding: 0 16px;
+      }
+
+      summary {
+        color: var(--ink);
+        padding: 14px 0;
+        cursor: pointer;
+        font-size: 13px;
+        font-weight: 700;
+      }
+
+      details p {
+        margin: -2px 0 15px;
+        color: var(--muted);
+        font-size: 13px;
+      }
+
+      .cta {
+        background: var(--surface-soft);
+        padding: 0 0 112px;
+      }
+
+      .cta-panel {
+        position: relative;
+        overflow: hidden;
+        display: grid;
+        grid-template-columns: 1fr auto;
+        align-items: center;
+        gap: 40px;
+        border-radius: 20px;
+        background:
+          radial-gradient(circle at 90% 0%, rgba(57, 132, 255, 0.33), transparent 30%),
+          var(--navy-950);
+        padding: 54px 58px;
+      }
+
+      .cta-panel h2 {
+        color: #ffffff;
+        font-size: clamp(2rem, 3vw, 2.8rem);
+      }
+
+      .cta-panel p {
+        max-width: 640px;
+        margin: 12px 0 0;
+        color: #96a8bd;
+      }
+
+      .cta-actions {
+        display: flex;
+        flex-wrap: wrap;
+        justify-content: flex-end;
+        gap: 11px;
+      }
+
+      .site-footer {
+        background: #050d18;
+        color: #8798ad;
+        padding: 58px 0 30px;
+      }
+
+      .footer-top {
+        display: grid;
+        grid-template-columns: 1.5fr repeat(3, 1fr);
+        gap: 54px;
+        padding-bottom: 48px;
+      }
+
+      .footer-brand p {
+        max-width: 330px;
+        margin: 16px 0 0;
+        color: #728399;
+        font-size: 13px;
+      }
+
+      .footer-group strong {
+        display: block;
+        margin-bottom: 14px;
+        color: #d5dee8;
+        font-size: 12px;
+      }
+
+      .footer-group a {
+        display: block;
+        width: fit-content;
+        margin-top: 8px;
+        color: #7f91a7;
+        font-size: 12px;
+      }
+
+      .footer-group a:hover {
+        color: #ffffff;
+      }
+
+      .footer-bottom {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 20px;
+        border-top: 1px solid rgba(255, 255, 255, 0.08);
+        padding-top: 24px;
+        font-size: 11px;
+      }
+
+      .status {
+        display: inline-flex;
+        align-items: center;
+        gap: 7px;
+      }
+
+      .status i {
+        width: 7px;
+        height: 7px;
+        border-radius: 50%;
+        background: var(--success);
+        box-shadow: 0 0 0 4px rgba(18, 183, 106, 0.09);
+      }
+
+      @media (max-width: 1050px) {
+        .hero-grid {
+          grid-template-columns: 1fr;
+          gap: 58px;
+        }
+
+        .hero-copy {
+          max-width: 720px;
+        }
+
+        .product-frame {
+          max-width: 820px;
+        }
+
+        .security-grid {
+          grid-template-columns: repeat(2, 1fr);
+        }
+
+        .platform-layout {
+          grid-template-columns: 1fr;
+          gap: 44px;
+        }
+
+        .platform-copy {
+          position: static;
+        }
+      }
+
+      @media (max-width: 850px) {
+        .menu-button {
+          display: inline-flex;
+        }
+
+        .nav-wrap {
+          position: absolute;
+          inset: 76px 0 auto;
+          display: none;
+          align-items: stretch;
+          border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+          background: rgba(6, 16, 30, 0.98);
+          padding: 20px 24px 24px;
+        }
+
+        .nav-wrap.open {
+          display: block;
+        }
+
+        .main-nav,
+        .header-actions {
+          align-items: stretch;
           flex-direction: column;
-          padding: 16px 20px;
+          margin: 0;
         }
 
-        nav {
-          justify-content: flex-start;
+        .main-nav {
+          gap: 0;
         }
 
-        .hero-inner,
-        .two-col,
-        .grid {
+        .main-nav a {
+          padding: 10px 0;
+        }
+
+        .header-actions {
+          gap: 10px;
+          margin-top: 14px;
+        }
+
+        .trust-inner {
+          grid-template-columns: repeat(2, 1fr);
+          padding: 28px 0;
+        }
+
+        .trust-label {
+          grid-column: 1 / -1;
+          max-width: none;
+        }
+
+        .outcome-grid {
           grid-template-columns: 1fr;
         }
 
-        .hero-inner {
-          padding-top: 36px;
+        .outcome-card {
+          min-height: 280px;
+        }
+
+        .docs-shell {
+          grid-template-columns: 1fr;
+          gap: 24px;
+        }
+
+        .docs-sidebar {
+          position: static;
+          display: flex;
+          overflow-x: auto;
+          gap: 26px;
+          padding-bottom: 12px;
+        }
+
+        .docs-nav-group,
+        .docs-nav-group + .docs-nav-group {
+          flex: 0 0 auto;
+          margin: 0;
+        }
+
+        .docs-sidebar a {
+          border-left: 0;
+          padding-left: 0;
+        }
+
+        .cta-panel {
+          grid-template-columns: 1fr;
+        }
+
+        .cta-actions {
+          justify-content: flex-start;
+        }
+
+        .footer-top {
+          grid-template-columns: 1.4fr repeat(2, 1fr);
+        }
+      }
+
+      @media (max-width: 640px) {
+        .container {
+          width: min(calc(100% - 32px), var(--max));
+        }
+
+        .brand-badge {
+          display: none;
+        }
+
+        .hero {
+          padding: 130px 0 70px;
+        }
+
+        h1 {
+          font-size: clamp(2.65rem, 13vw, 4rem);
+        }
+
+        .hero-copy {
+          font-size: 17px;
+        }
+
+        .hero-actions .button {
+          width: 100%;
+        }
+
+        .terminal-card {
+          right: -8px;
+          bottom: -35px;
+          width: 72%;
+        }
+
+        .trust-inner,
+        .platform-grid,
+        .security-grid,
+        .step-grid,
+        .architecture-flow {
+          grid-template-columns: 1fr;
+        }
+
+        .trust-inner {
+          gap: 14px;
+        }
+
+        .section,
+        .docs-section {
+          padding: 80px 0;
+        }
+
+        .section-title {
+          font-size: 2.35rem;
+        }
+
+        .docs-header {
+          align-items: flex-start;
+          flex-direction: column;
+        }
+
+        .feature-table {
+          display: block;
+          overflow-x: auto;
+          white-space: nowrap;
+        }
+
+        .flow-node:not(:last-child)::after {
+          top: auto;
+          right: 50%;
+          bottom: -15px;
+          content: "↓";
+          transform: translateX(50%);
+        }
+
+        .cta {
+          padding-bottom: 80px;
+        }
+
+        .cta-panel {
+          border-radius: 15px;
+          padding: 36px 24px;
+        }
+
+        .cta-actions .button {
+          width: 100%;
+        }
+
+        .footer-top {
+          grid-template-columns: 1fr 1fr;
+          gap: 34px;
+        }
+
+        .footer-brand {
+          grid-column: 1 / -1;
+        }
+
+        .footer-bottom {
+          align-items: flex-start;
+          flex-direction: column;
+        }
+      }
+
+      @media (prefers-reduced-motion: reduce) {
+        html {
+          scroll-behavior: auto;
+        }
+
+        *,
+        *::before,
+        *::after {
+          scroll-behavior: auto !important;
+          transition-duration: 0.01ms !important;
         }
       }
     </style>
   </head>
   <body>
     <header class="site-header">
-      <div class="header-inner">
-        <a class="brand" href="#top" aria-label="PromptDeck documentation home">
+      <div class="container header-inner">
+        <a class="brand" href="#top" aria-label="PromptDeck home">
           <img src="public/logo.png" alt="" />
-          <span>
-            <strong>PromptDeck</strong>
-            <span>Product and developer documentation</span>
-          </span>
+          <span>PromptDeck</span>
+          <span class="brand-badge">Open source</span>
         </a>
-        <nav aria-label="Documentation sections">
-          <a href="#quick-start">Quick Start</a>
-          <a href="#surfaces">Surfaces</a>
-          <a href="#usage">Usage</a>
-          <a href="#architecture">Architecture</a>
-          <a href="#development">Development</a>
-          <a href="#troubleshooting">Troubleshooting</a>
-        </nav>
+        <button class="menu-button" type="button" aria-label="Open navigation" aria-expanded="false">
+          <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+            <path d="M4 7h16M4 12h16M4 17h16" />
+          </svg>
+        </button>
+        <div class="nav-wrap">
+          <nav class="main-nav" aria-label="Main navigation">
+            <a href="#product">Product</a>
+            <a href="#platform">Platform</a>
+            <a href="#security">Security</a>
+            <a href="#docs">Documentation</a>
+          </nav>
+          <div class="header-actions">
+            <a class="button ghost-dark small" href="https://github.com/orkunkinay/promptdeck">GitHub</a>
+            <a class="button primary small" href="#quick-start">Get started</a>
+          </div>
+        </div>
       </div>
     </header>
 
-    <div id="top" class="hero">
-      <div class="hero-inner">
-        <div>
-          <span class="eyebrow">Local-first prompt command center</span>
-          <h1>PromptDeck keeps reusable AI prompts one trigger away.</h1>
-          <p class="lead">
-            Save prompts locally and reach them where you work: the browser extension's <code>;;</code> helper, a terminal CLI, a full VS Code manager, and clipboard access for native desktop apps. One prompt model, one backup format, no account or cloud.
-          </p>
-          <div class="actions">
-            <a class="button primary" href="#quick-start">Get started</a>
-            <a class="button" href="README.md">Read README</a>
-            <a class="button" href="https://chromewebstore.google.com/detail/promptdeck/ibhheacppbbekiihiabfmplinfopcind">Chrome Web Store</a>
-          </div>
-        </div>
-        <figure class="hero-shot" aria-label="PromptDeck manager screenshot">
-          <img src="public/manager_ui.png" alt="PromptDeck manager showing prompt details, content, placeholders, and variants" />
-        </figure>
-      </div>
-    </div>
-
     <main>
-      <section id="quick-start">
-        <div class="section-head">
+      <section id="top" class="hero">
+        <div class="container hero-grid">
           <div>
-            <h2>Quick Start</h2>
-            <p>Build the extension, load the generated <code>dist/</code> folder, and test the command helper in a normal web page.</p>
-          </div>
-        </div>
-        <div class="two-col">
-          <div class="card">
-            <h3>Install from source</h3>
-            <pre><code>git clone https://github.com/orkunkinay/promptdeck.git
-cd promptdeck
-npm install
-npm run build</code></pre>
-            <ol>
-              <li>Open <code>chrome://extensions</code>.</li>
-              <li>Enable Developer mode.</li>
-              <li>Choose Load unpacked.</li>
-              <li>Select <code>dist/</code>.</li>
-              <li>Open a page with a text field and type <code>;;</code>.</li>
-            </ol>
-          </div>
-          <div class="card">
-            <h3>Open the manager</h3>
-            <p>Use the browser action, the extension options page, or the configured extension command.</p>
-            <ul>
-              <li>macOS: <code>Command+K</code></li>
-              <li>Windows/Linux: <code>Ctrl+K</code></li>
-            </ul>
-            <p>After rebuilding locally, reload the extension in <code>chrome://extensions</code> and refresh pages where PromptDeck should run.</p>
-          </div>
-        </div>
-      </section>
-
-      <section id="surfaces">
-        <div class="section-head">
-          <div>
-            <h2>Surfaces</h2>
-            <p>PromptDeck runs across four surfaces that share one prompt model and one backup format. The browser uses IndexedDB; the CLI and VS Code share a local JSON file (default <code>~/.promptdeck/library.json</code>). Backups bridge the two.</p>
-          </div>
-        </div>
-        <div class="grid">
-          <div class="card">
-            <h3>Browser extension</h3>
-            <p>The <code>;;</code> autocomplete helper on editable fields, plus the manager UI for prompts, versions, variants, settings, and backups.</p>
-            <pre><code>npm install
-npm run build      # load dist/ as an unpacked extension</code></pre>
-          </div>
-          <div class="card">
-            <h3>Terminal CLI</h3>
-            <p>Search, print, copy, create, edit, and delete prompts from the command line. <code>--edit</code> opens a prompt document in your editor for multiline authoring.</p>
-            <pre><code>npm run build:cli &amp;&amp; npm link
-promptdeck search refactor --json
-promptdeck add /paper-reading --edit
-promptdeck edit /commit-message --edit --new-version</code></pre>
-          </div>
-          <div class="card">
-            <h3>VS Code extension</h3>
-            <p>Open an editor-side manager for the central file library, or use the Command Palette, Quick Pick, and PromptDeck sidebar for fast insert/copy workflows. Saving <code>promptdeck:</code> documents updates the same shared file library.</p>
-            <pre><code>cd extensions/vscode
-npm run build      # then press F5 to launch</code></pre>
-          </div>
-          <div class="card">
-            <h3>Native desktop / clipboard</h3>
-            <p>Copy a resolved prompt and paste into any native app (ChatGPT Desktop, Claude Desktop, editors). Bind to a global shortcut or launcher.</p>
-            <pre><code>promptdeck copy /paper-reading:short
-promptdeck pick    # interactive search + copy</code></pre>
-          </div>
-        </div>
-        <div class="card" style="margin-top: 16px">
-          <h3>One library across surfaces</h3>
-          <p>The browser and file stores are separate by design, but the same backup format bridges them. The CLI and VS Code extension already share <code>~/.promptdeck/library.json</code>, and the VS Code manager shows the active library path so users know which central library they are editing.</p>
-          <pre><code># Seed the file store from a browser backup
-promptdeck import ~/Downloads/promptdeck-backup.json --mode merge-update
-
-# Export the file store as a browser-compatible backup
-promptdeck export promptdeck-from-cli.json</code></pre>
-        </div>
-      </section>
-
-      <section id="usage">
-        <div class="section-head">
-          <div>
-            <h2>Usage</h2>
-            <p>PromptDeck separates the trigger from prompt commands. The default trigger is <code>;;</code>; prompt commands are stored as slash commands such as <code>/paper-reading</code>.</p>
-          </div>
-        </div>
-        <div class="two-col">
-          <div class="media-card">
-            <img src="public/autocomplete_helper.png" alt="PromptDeck autocomplete helper inside a browser text field" />
-            <div>
-              <h3>Autocomplete helper</h3>
-              <p>Type the trigger, keep typing to search, then insert or copy the selected prompt.</p>
+            <div class="eyebrow"><span class="eyebrow-dot"></span>Local-first prompt infrastructure</div>
+            <h1>Your best prompts.<br /><span class="gradient-text">Everywhere you work.</span></h1>
+            <p class="hero-copy">
+              PromptDeck gives teams one reliable system to create, version, and use AI prompts across the browser, terminal, VS Code, and native desktop apps.
+            </p>
+            <div class="hero-actions">
+              <a class="button primary" href="https://chromewebstore.google.com/detail/promptdeck/ibhheacppbbekiihiabfmplinfopcind">
+                Add to Chrome
+                <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M5 12h14m-5-5 5 5-5 5" /></svg>
+              </a>
+              <a class="button ghost-dark" href="#docs">
+                Read the docs
+                <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="m9 18 6-6-6-6" /></svg>
+              </a>
+            </div>
+            <div class="hero-note">
+              <span><svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m5 12 4 4L19 6" /></svg>No account required</span>
+              <span><svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m5 12 4 4L19 6" /></svg>No cloud dependency</span>
+              <span><svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m5 12 4 4L19 6" /></svg>MIT licensed</span>
             </div>
           </div>
-          <div class="card">
-            <h3>Keyboard behavior</h3>
-            <ul>
-              <li><code>Enter</code> or <code>Tab</code>: use the selected prompt.</li>
-              <li><code>ArrowUp</code> and <code>ArrowDown</code>: move through results.</li>
-              <li><code>Command+ArrowDown</code> or <code>Ctrl+ArrowDown</code>: expand the result menu.</li>
-              <li><code>Command+Enter</code> or <code>Ctrl+Enter</code>: copy the selected prompt.</li>
-              <li><code>Shift+Enter</code>: keep the typed command and append the prompt.</li>
-              <li><code>Escape</code>: close the helper.</li>
-            </ul>
+
+          <div class="product-frame" aria-label="PromptDeck product preview">
+            <div class="browser-chrome">
+              <div class="window-bar"><i></i><i></i><i></i><span>promptdeck / manager</span></div>
+              <img src="public/manager_ui.png" alt="PromptDeck manager showing a versioned prompt library" />
+            </div>
+            <div class="terminal-card" aria-hidden="true">
+              <div class="terminal-head">Terminal</div>
+              <div class="terminal-body">
+                <p><span class="prompt">$</span> promptdeck copy /review:security</p>
+                <p class="result">✓ Prompt copied to clipboard</p>
+              </div>
+            </div>
           </div>
         </div>
-        <div class="grid" style="margin-top: 16px">
-          <div class="card">
-            <h3>VS Code manager</h3>
-            <p>Run <strong>PromptDeck: Open Manager</strong> to manage the central file library inside VS Code. The manager can create, edit, duplicate, delete, import, export, insert into the active editor, and copy to the clipboard.</p>
+      </section>
+
+      <div class="trust-strip" aria-label="Teams that benefit from PromptDeck">
+        <div class="container trust-inner">
+          <div class="trust-label">Built for AI-enabled teams across the business</div>
+          <div class="team-type">
+            <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M16 18 22 12 16 6M8 6l-6 6 6 6M14 4l-4 16" /></svg>
+            Engineering
           </div>
-          <div class="card">
-            <h3>Versions</h3>
-            <p>Saves create immutable prompt versions unless the edit is marked as minor. The version rail can set defaults, restore old content as latest, delete older entries, and compare versions line by line.</p>
+          <div class="team-type">
+            <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M12 20h9M12 4h9M4 9h16M4 15h16M7 4v16" /></svg>
+            Product
           </div>
-          <div class="card">
-            <h3>Variants</h3>
-            <p>Variants are intentional alternatives. A suffix such as <code>short</code> can be selected with a command like <code>;;paper:short</code>.</p>
+          <div class="team-type">
+            <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="11" cy="11" r="7" /><path d="m20 20-4-4" /></svg>
+            Research
           </div>
-          <div class="card">
-            <h3>Placeholders</h3>
-            <p>Tokens like <code>{{paper_text}}</code> are detected and tracked as metadata. Current insertion preserves them exactly as saved.</p>
+          <div class="team-type">
+            <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M4 19V9m6 10V5m6 14v-7m4 7H2" /></svg>
+            Operations
           </div>
-          <div class="card">
-            <h3>Prompt documents</h3>
-            <p>The CLI editor flow and VS Code prompt documents use YAML-style frontmatter plus a Markdown body, so long prompts can be edited without touching raw JSON.</p>
-            <pre><code>---
-command: /paper-reading
-aliases: [/paper, /read]
-tags: [research, summarize]
+        </div>
+      </div>
+
+      <section id="product" class="section">
+        <div class="container">
+          <p class="section-kicker">A system, not a snippet folder</p>
+          <h2 class="section-title">Turn prompt craft into durable infrastructure.</h2>
+          <p class="section-lead">
+            Keep the knowledge behind great AI work organized, auditable, and immediately available—without introducing another hosted data silo.
+          </p>
+
+          <div class="outcome-grid">
+            <article class="outcome-card featured">
+              <div class="card-icon">
+                <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="7" /><path d="m20 20-4-4" /></svg>
+              </div>
+              <h3>Retrieve in milliseconds</h3>
+              <p>Fuzzy search across commands, aliases, titles, tags, favorites, recency, and usage.</p>
+              <div class="prompt-search-demo" aria-hidden="true">
+                <div class="demo-input"><b>;;</b>security review</div>
+                <div class="demo-result"><span>/review:security</span><span>↵ insert</span></div>
+              </div>
+            </article>
+
+            <article class="outcome-card">
+              <div class="card-icon">
+                <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 12a9 9 0 1 0 3-6.7L3 8" /><path d="M3 3v5h5M12 7v5l3 2" /></svg>
+              </div>
+              <h3>Improve without losing history</h3>
+              <p>Immutable versions, intentional variants, defaults, restore workflows, and line-by-line comparison.</p>
+              <div class="version-demo" aria-hidden="true"><span>v12 · current</span><span>v11</span><span>v10</span></div>
+            </article>
+
+            <article class="outcome-card">
+              <div class="card-icon">
+                <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10Z" /><path d="m9 12 2 2 4-4" /></svg>
+              </div>
+              <h3>Keep data under your control</h3>
+              <p>Local storage, portable JSON backups, no account, and intentionally narrow extension permissions.</p>
+              <div class="data-demo" aria-hidden="true">
+                <span><i></i>Local storage</span><span><i></i>Portable JSON</span><span><i></i>No telemetry</span><span><i></i>Open source</span>
+              </div>
+            </article>
+          </div>
+        </div>
+      </section>
+
+      <section id="platform" class="section soft">
+        <div class="container platform-layout">
+          <div class="platform-copy">
+            <p class="section-kicker">One model, every surface</p>
+            <h2 class="section-title">Meet people in the tools they already use.</h2>
+            <p class="section-lead">
+              Browser prompts use IndexedDB. CLI and VS Code share a local JSON library. A compatible backup format keeps every surface portable.
+            </p>
+            <div style="margin-top: 28px"><a class="button" href="#surfaces">Explore platform docs</a></div>
+          </div>
+
+          <div class="platform-grid">
+            <article class="platform-card">
+              <span class="label"><svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="9" /><path d="M3 12h18M12 3a15 15 0 0 1 0 18M12 3a15 15 0 0 0 0 18" /></svg>Browser</span>
+              <h3>Insert wherever you type</h3>
+              <p>Type <code>;;</code> in an editable field to search and insert a saved prompt.</p>
+              <div class="platform-command"><b>;;</b>paper-reading:short</div>
+            </article>
+
+            <article class="platform-card">
+              <span class="label"><svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m7 8-4 4 4 4M13 16h8" /></svg>Terminal</span>
+              <h3>Script your prompt workflow</h3>
+              <p>Search, print, copy, create, edit, and delete through a focused CLI.</p>
+              <div class="platform-command"><b>$</b> promptdeck pick</div>
+            </article>
+
+            <article class="platform-card">
+              <span class="label"><svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m17 2-5 5-5-5-5 5 5 5-5 5 5 5 5-5 5 5 5-5-5-5 5-5-5-5Z" /></svg>VS Code</span>
+              <h3>Author beside your code</h3>
+              <p>Manage the shared library with a full editor, sidebar, Quick Pick, and prompt documents.</p>
+              <div class="platform-command"><b>›</b> PromptDeck: Open Manager</div>
+            </article>
+
+            <article class="platform-card">
+              <span class="label"><svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="7" y="4" width="10" height="16" rx="2" /><path d="M9 1h6M9 23h6" /></svg>Desktop</span>
+              <h3>Reach any native app</h3>
+              <p>Resolve to the clipboard, then paste into desktop AI tools, editors, and launchers.</p>
+              <div class="platform-command"><b>$</b> promptdeck copy /brief</div>
+            </article>
+          </div>
+        </div>
+      </section>
+
+      <section id="security" class="section dark">
+        <div class="container">
+          <p class="section-kicker">Security by architecture</p>
+          <h2 class="section-title">Your prompts should remain your prompts.</h2>
+          <p class="section-lead">PromptDeck is local-first by design. The product works without an account, hosted backend, or required network connection.</p>
+
+          <div class="security-grid">
+            <article class="security-intro">
+              <div class="lock">
+                <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="4" y="10" width="16" height="11" rx="2" /><path d="M8 10V7a4 4 0 0 1 8 0v3" /></svg>
+              </div>
+              <h3>Local-first<br />by default.</h3>
+              <p>No cloud sync means prompt content is not sent to a PromptDeck server.</p>
+            </article>
+            <article class="security-card">
+              <span class="number">01</span>
+              <h3>Minimal permissions</h3>
+              <p>The browser extension limits required permissions to storage and clipboard write.</p>
+            </article>
+            <article class="security-card">
+              <span class="number">02</span>
+              <h3>Portable backups</h3>
+              <p>Export prompt text, versions, variants, and settings to a user-controlled JSON file.</p>
+            </article>
+            <article class="security-card">
+              <span class="number">03</span>
+              <h3>Inspectable source</h3>
+              <p>The complete codebase is available under the MIT license for review and extension.</p>
+            </article>
+          </div>
+        </div>
+      </section>
+
+      <section id="docs" class="docs-section">
+        <div class="container">
+          <div class="docs-header">
+            <div>
+              <p class="section-kicker">Technical documentation</p>
+              <h2 class="section-title">From zero to working prompt library.</h2>
+              <p class="section-lead">Everything needed to install, operate, integrate, and contribute to PromptDeck.</p>
+            </div>
+            <a class="button" href="https://github.com/orkunkinay/promptdeck">
+              View source on GitHub
+              <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M7 17 17 7M7 7h10v10" /></svg>
+            </a>
+          </div>
+
+          <div class="docs-shell">
+            <aside class="docs-sidebar" aria-label="Documentation navigation">
+              <div class="docs-nav-group">
+                <span class="docs-nav-label">Getting started</span>
+                <a href="#quick-start">Quick start</a>
+                <a href="#surfaces">Runtime surfaces</a>
+                <a href="#keyboard">Keyboard reference</a>
+              </div>
+              <div class="docs-nav-group">
+                <span class="docs-nav-label">Core concepts</span>
+                <a href="#prompt-model">Prompt model</a>
+                <a href="#configuration">Configuration</a>
+                <a href="#architecture">Architecture</a>
+              </div>
+              <div class="docs-nav-group">
+                <span class="docs-nav-label">Developers</span>
+                <a href="#development">Development</a>
+                <a href="#troubleshooting">Troubleshooting</a>
+              </div>
+            </aside>
+
+            <div class="docs-content">
+              <article id="quick-start" class="doc-block">
+                <h3>Quick start</h3>
+                <p>Install from source, build the extension, and load the generated package in a Chromium-based browser.</p>
+                <div class="code-block">
+                  <div class="code-label"><span>Shell</span><button class="copy-button" type="button">Copy</button></div>
+                  <pre><code><span class="token-command">git clone</span> https://github.com/orkunkinay/promptdeck.git
+<span class="token-command">cd</span> promptdeck
+<span class="token-command">npm install</span>
+<span class="token-command">npm run build</span></code></pre>
+                </div>
+                <div class="step-grid">
+                  <div class="step"><span class="step-number">1</span><strong>Open extensions</strong><p>Navigate to <span class="inline-code">chrome://extensions</span>.</p></div>
+                  <div class="step"><span class="step-number">2</span><strong>Load the build</strong><p>Enable Developer mode and select <span class="inline-code">dist/</span>.</p></div>
+                  <div class="step"><span class="step-number">3</span><strong>Use a command</strong><p>Open a text field and type <span class="inline-code">;;</span>.</p></div>
+                </div>
+                <div class="doc-callout">
+                  <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="9" /><path d="M12 11v5M12 8h.01" /></svg>
+                  <span>After rebuilding, reload PromptDeck in <strong>chrome://extensions</strong> and refresh any pages where the content script should run.</span>
+                </div>
+              </article>
+
+              <article id="surfaces" class="doc-block">
+                <h3>Runtime surfaces</h3>
+                <p>The same domain model supports four workflows. Browser storage is separate from the file-backed library used by the CLI and VS Code; backup files bridge both stores.</p>
+                <table class="feature-table">
+                  <thead><tr><th>Surface</th><th>Primary workflow</th><th>Storage</th></tr></thead>
+                  <tbody>
+                    <tr><td>Browser extension</td><td>Autocomplete helper and full prompt manager</td><td>IndexedDB via Dexie</td></tr>
+                    <tr><td>Terminal CLI</td><td>Search, print, copy, create, edit, and delete</td><td><span class="inline-code">~/.promptdeck/library.json</span></td></tr>
+                    <tr><td>VS Code</td><td>Manager, sidebar, Quick Pick, and prompt documents</td><td>Shared file library</td></tr>
+                    <tr><td>Native desktop</td><td>Resolve to clipboard for any application</td><td>Shared file library</td></tr>
+                  </tbody>
+                </table>
+                <h4>CLI setup and common commands</h4>
+                <div class="code-block">
+                  <div class="code-label"><span>Shell</span><button class="copy-button" type="button">Copy</button></div>
+                  <pre><code><span class="token-command">npm run build:cli</span> &amp;&amp; <span class="token-command">npm link</span>
+
+<span class="token-command">promptdeck search</span> refactor --json
+<span class="token-command">promptdeck add</span> /paper-reading --edit
+<span class="token-command">promptdeck edit</span> /commit-message --edit --new-version
+<span class="token-command">promptdeck copy</span> /paper-reading:short
+<span class="token-command">promptdeck pick</span></code></pre>
+                </div>
+                <h4>Move a library between stores</h4>
+                <div class="code-block">
+                  <div class="code-label"><span>Shell</span><button class="copy-button" type="button">Copy</button></div>
+                  <pre><code><span class="token-command">promptdeck import</span> ~/Downloads/promptdeck-backup.json --mode merge-update
+<span class="token-command">promptdeck export</span> promptdeck-from-cli.json</code></pre>
+                </div>
+              </article>
+
+              <article id="keyboard" class="doc-block">
+                <h3>Keyboard reference</h3>
+                <p>The default trigger is <span class="inline-code">;;</span>. Continue typing to filter the command menu, then use the keyboard to act on the selected result.</p>
+                <table class="feature-table">
+                  <thead><tr><th>Keys</th><th>Action</th></tr></thead>
+                  <tbody>
+                    <tr><td>Enter or Tab</td><td>Insert the selected prompt</td></tr>
+                    <tr><td>Arrow Up / Down</td><td>Move through results</td></tr>
+                    <tr><td>Cmd/Ctrl + Arrow Down</td><td>Expand the result menu</td></tr>
+                    <tr><td>Cmd/Ctrl + Enter</td><td>Copy the selected prompt</td></tr>
+                    <tr><td>Shift + Enter</td><td>Keep the typed command and append the prompt</td></tr>
+                    <tr><td>Escape</td><td>Close the helper</td></tr>
+                  </tbody>
+                </table>
+              </article>
+
+              <article id="prompt-model" class="doc-block">
+                <h3>Prompt model</h3>
+                <p>A prompt owns a slash command, optional aliases and tags, immutable versions, and intentional variants. Placeholder tokens are preserved during insertion.</p>
+                <div class="code-block">
+                  <div class="code-label"><span>Prompt document</span><button class="copy-button" type="button">Copy</button></div>
+                  <pre><code>---
+<span class="token-key">command:</span> <span class="token-value">/paper-reading</span>
+<span class="token-key">aliases:</span> <span class="token-value">[/paper, /read]</span>
+<span class="token-key">tags:</span> <span class="token-value">[research, summarize]</span>
 ---
-Prompt body with {{placeholders}}</code></pre>
+Summarize the following paper for {{audience}}.
+
+Paper:
+{{paper_text}}</code></pre>
+                </div>
+                <table class="feature-table">
+                  <thead><tr><th>Concept</th><th>Behavior</th></tr></thead>
+                  <tbody>
+                    <tr><td>Commands</td><td>Unique slash identifiers such as <span class="inline-code">/paper-reading</span></td></tr>
+                    <tr><td>Versions</td><td>Immutable snapshots; restore old content as the latest version</td></tr>
+                    <tr><td>Variants</td><td>Named alternatives selected with a suffix such as <span class="inline-code">:short</span></td></tr>
+                    <tr><td>Placeholders</td><td>Tokens such as <span class="inline-code">{{paper_text}}</span> tracked as metadata and preserved at insertion</td></tr>
+                  </tbody>
+                </table>
+              </article>
+
+              <article id="configuration" class="doc-block">
+                <h3>Configuration and data</h3>
+                <p>Normal browser operation requires no environment variables. Settings are managed in the extension; the file library can be redirected when needed.</p>
+                <table class="feature-table">
+                  <thead><tr><th>Setting</th><th>Default</th><th>Location</th></tr></thead>
+                  <tbody>
+                    <tr><td>Trigger</td><td><span class="inline-code">;;</span></td><td><span class="inline-code">chrome.storage.local</span></td></tr>
+                    <tr><td>Insertion mode</td><td><span class="inline-code">prefer-direct</span></td><td><span class="inline-code">chrome.storage.local</span></td></tr>
+                    <tr><td>Theme</td><td><span class="inline-code">system</span></td><td><span class="inline-code">chrome.storage.local</span></td></tr>
+                    <tr><td>Browser library</td><td>Seed prompts on first run</td><td>IndexedDB <span class="inline-code">PromptDeckDB</span></td></tr>
+                    <tr><td>CLI / VS Code library</td><td>Seed prompts on first run</td><td><span class="inline-code">~/.promptdeck/library.json</span></td></tr>
+                  </tbody>
+                </table>
+                <h4>File library overrides</h4>
+                <p>Use <span class="inline-code">PROMPTDECK_LIBRARY</span>, <span class="inline-code">PROMPTDECK_HOME</span>, or the VS Code <span class="inline-code">promptdeck.libraryPath</span> setting. Platform defaults respect <span class="inline-code">XDG_DATA_HOME</span> and <span class="inline-code">%APPDATA%</span>.</p>
+              </article>
+
+              <article id="architecture" class="doc-block">
+                <h3>Architecture</h3>
+                <p>PromptDeck separates browser runtime boundaries from shared domain services so prompt behavior stays consistent across the extension, CLI, and editor integrations.</p>
+                <div class="architecture-flow" aria-label="PromptDeck browser architecture flow">
+                  <div class="flow-node"><strong>Editable field</strong><span>Command detection and keyboard ownership</span></div>
+                  <div class="flow-node"><strong>Content script</strong><span>Search, shadow DOM UI, insertion</span></div>
+                  <div class="flow-node"><strong>Service worker</strong><span>Validated runtime messages</span></div>
+                  <div class="flow-node"><strong>Domain services</strong><span>Repository, versions, settings, backup</span></div>
+                </div>
+                <table class="feature-table">
+                  <thead><tr><th>Area</th><th>Source</th><th>Responsibility</th></tr></thead>
+                  <tbody>
+                    <tr><td>Runtime boundary</td><td><span class="inline-code">src/background/</span></td><td>Message validation and repository operations</td></tr>
+                    <tr><td>Content script</td><td><span class="inline-code">src/content/</span></td><td>Detection, helper UI, search, insertion, clipboard fallback</td></tr>
+                    <tr><td>Manager UI</td><td><span class="inline-code">src/options/</span></td><td>Editing, settings, backups, versions, and variants</td></tr>
+                    <tr><td>Storage</td><td><span class="inline-code">src/shared/storage/</span></td><td>Dexie database, repositories, and migrations</td></tr>
+                    <tr><td>Backups</td><td><span class="inline-code">src/shared/backup/</span></td><td>Schema, validation, migration, planning, and conflict handling</td></tr>
+                    <tr><td>Prompt documents</td><td><span class="inline-code">src/core/promptDocument.ts</span></td><td>Frontmatter serialization for CLI and VS Code</td></tr>
+                  </tbody>
+                </table>
+              </article>
+
+              <article id="development" class="doc-block">
+                <h3>Development workflow</h3>
+                <p>Use the Vite server for UI iteration and built extension output for realistic service-worker and content-script testing.</p>
+                <div class="code-block">
+                  <div class="code-label"><span>Shell</span><button class="copy-button" type="button">Copy</button></div>
+                  <pre><code><span class="token-command">npm run dev</span>          # local UI iteration
+<span class="token-command">npm run typecheck</span>    # TypeScript validation
+<span class="token-command">npm test</span>             # unit and integration tests
+<span class="token-command">npm run build</span>        # production extension build
+<span class="token-command">npm run test:e2e</span>    # browser smoke tests; build first
+<span class="token-command">npm run package:chrome</span>
+
+<span class="token-command">cd extensions/vscode</span>
+<span class="token-command">npm run build</span></code></pre>
+                </div>
+                <div class="doc-callout">
+                  <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10Z" /><path d="m9 12 2 2 4-4" /></svg>
+                  <span>The Chrome packaging script validates Manifest V3, exact permissions, missing files, and remote script references before creating the extension archive.</span>
+                </div>
+              </article>
+
+              <article id="troubleshooting" class="doc-block">
+                <h3>Troubleshooting</h3>
+                <p>Common issues usually come from extension reload state, restricted pages, command collisions, or editor-specific insertion behavior.</p>
+                <div class="trouble-list">
+                  <details><summary>The helper does not open</summary><p>Check the configured trigger, refresh the page after reloading the extension, avoid <span class="inline-code">chrome://</span> pages, and confirm the current host is not disabled.</p></details>
+                  <details><summary>A prompt copies instead of inserting</summary><p>Some rich editors reject synthetic edits. PromptDeck falls back to the clipboard and supports direct, copy-only, and ask-every-time insertion modes.</p></details>
+                  <details><summary>Save reports a command collision</summary><p>Commands and aliases must be unique across prompts. Choose another command or remove the conflicting alias.</p></details>
+                  <details><summary>VS Code is editing the wrong library</summary><p>Check the path shown in the manager. Override the default with <span class="inline-code">promptdeck.libraryPath</span>, <span class="inline-code">PROMPTDECK_LIBRARY</span>, or <span class="inline-code">PROMPTDECK_HOME</span>.</p></details>
+                </div>
+                <div class="doc-callout">
+                  <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 9v4M12 17h.01" /><path d="M10.3 3.6 2.6 17a2 2 0 0 0 1.7 3h15.4a2 2 0 0 0 1.7-3L13.7 3.6a2 2 0 0 0-3.4 0Z" /></svg>
+                  <span>Browser data is tied to the current profile. Export a JSON backup before clearing data, uninstalling PromptDeck, or changing profiles.</span>
+                </div>
+              </article>
+            </div>
           </div>
         </div>
       </section>
 
-      <section id="configuration">
-        <div class="section-head">
-          <div>
-            <h2>Configuration And Data</h2>
-            <p>The manager exposes the settings that matter during normal use. There are no required environment variables for local development or extension runtime.</p>
+      <section class="cta">
+        <div class="container">
+          <div class="cta-panel">
+            <div>
+              <h2>Make great prompts a shared capability.</h2>
+              <p>Start in the browser, bring the same library into your editor, and keep every prompt under your control.</p>
+            </div>
+            <div class="cta-actions">
+              <a class="button primary" href="https://chromewebstore.google.com/detail/promptdeck/ibhheacppbbekiihiabfmplinfopcind">Add to Chrome</a>
+              <a class="button ghost-dark" href="https://github.com/orkunkinay/promptdeck">View on GitHub</a>
+            </div>
           </div>
-        </div>
-        <div class="table-wrap">
-          <table>
-            <thead>
-              <tr>
-                <th>Setting or data</th>
-                <th>Default</th>
-                <th>Where it lives</th>
-                <th>Notes</th>
-              </tr>
-            </thead>
-            <tbody>
-              <tr>
-                <td>Trigger</td>
-                <td><code>;;</code></td>
-                <td><code>chrome.storage.local</code></td>
-                <td>Used by the content script command parser.</td>
-              </tr>
-              <tr>
-                <td>Insertion mode</td>
-                <td><code>prefer-direct</code></td>
-                <td><code>chrome.storage.local</code></td>
-                <td>Can prefer direct insertion, always copy, or ask every time.</td>
-              </tr>
-              <tr>
-                <td>Theme</td>
-                <td><code>system</code></td>
-                <td><code>chrome.storage.local</code></td>
-                <td>The manager follows system, light, or dark mode.</td>
-              </tr>
-              <tr>
-                <td>Prompt library (browser)</td>
-                <td>Seed prompts on first run</td>
-                <td>IndexedDB database <code>PromptDeckDB</code></td>
-                <td>Stored through Dexie with prompt indexes and migrations.</td>
-              </tr>
-              <tr>
-                <td>Prompt library (CLI / VS Code)</td>
-                <td>Seed prompts on first run</td>
-                <td><code>~/.promptdeck/library.json</code></td>
-                <td>Override with <code>PROMPTDECK_LIBRARY</code>, <code>PROMPTDECK_HOME</code>, or the VS Code <code>promptdeck.libraryPath</code> setting; respects <code>XDG_DATA_HOME</code> and <code>%APPDATA%</code>.</td>
-              </tr>
-              <tr>
-                <td>Backup files</td>
-                <td>Manual export</td>
-                <td>User-selected JSON files</td>
-                <td>Contain prompt text, versions, variants, and settings.</td>
-              </tr>
-            </tbody>
-          </table>
-        </div>
-      </section>
-
-      <section id="architecture">
-        <div class="section-head">
-          <div>
-            <h2>Architecture</h2>
-            <p>The codebase is a Vite and React extension with a service worker boundary, content script insertion layer, local storage repository, and shared domain services.</p>
-          </div>
-        </div>
-        <div class="grid">
-          <div class="card">
-            <h3>Runtime boundary</h3>
-            <p><code>src/background/index.ts</code> validates runtime messages and performs prompt and settings operations through repository services.</p>
-          </div>
-          <div class="card">
-            <h3>Content script</h3>
-            <p><code>src/content/</code> detects commands in active editables, renders the helper in shadow DOM, searches prompts, and inserts or copies resolved content.</p>
-          </div>
-          <div class="card">
-            <h3>Manager UI</h3>
-            <p><code>src/options/</code> contains the React dashboard for prompt editing, settings, backups, import previews, versions, variants, and Markdown export.</p>
-          </div>
-          <div class="card">
-            <h3>VS Code manager</h3>
-            <p><code>extensions/vscode/src/managerPanel.ts</code> hosts the Webview manager, and <code>managerBridge.ts</code> routes typed requests back to the shared file-backed <code>PromptLibrary</code>.</p>
-          </div>
-          <div class="card">
-            <h3>Storage</h3>
-            <p><code>src/shared/storage/</code> uses Dexie for prompts and migrations. Settings use a small service around <code>chrome.storage.local</code>.</p>
-          </div>
-          <div class="card">
-            <h3>Search</h3>
-            <p><code>src/shared/search/fuzzySearch.ts</code> ranks by exact aliases, title, tags, fuzzy matches, favorites, recency, usage, and host-specific use.</p>
-          </div>
-          <div class="card">
-            <h3>Backups</h3>
-            <p><code>src/shared/backup/</code> defines backup schema, validation, migration, import planning, conflict handling, and apply modes.</p>
-          </div>
-          <div class="card">
-            <h3>Prompt documents</h3>
-            <p><code>src/core/promptDocument.ts</code> serializes prompts to an editable frontmatter format used by CLI <code>--edit</code> and the VS Code <code>promptdeck:</code> file provider.</p>
-          </div>
-        </div>
-      </section>
-
-      <section id="development">
-        <div class="section-head">
-          <div>
-            <h2>Development Workflow</h2>
-            <p>Use the Vite dev server for UI iteration, but use built extension output for realistic content script and service worker testing.</p>
-          </div>
-        </div>
-        <div class="two-col">
-          <div class="card">
-            <h3>Common commands</h3>
-            <pre><code>npm run dev
-npm run typecheck
-npm test
-npm run build
-npm run test:e2e
-npm run package:chrome
-
-cd extensions/vscode
-npm run build      # bundles extension + manager webview</code></pre>
-            <p><code>npm run test:e2e</code> requires <code>dist/manifest.json</code>, so build first.</p>
-          </div>
-          <div class="card">
-            <h3>Package policy</h3>
-            <p>The Chrome packaging script validates Manifest V3, exact permissions, missing package files, and remote script references before creating <code>promptdeck-chrome-extension.zip</code>.</p>
-            <p>Required permissions are intentionally limited to <code>storage</code> and <code>clipboardWrite</code>.</p>
-          </div>
-        </div>
-      </section>
-
-      <section id="troubleshooting">
-        <div class="section-head">
-          <div>
-            <h2>Troubleshooting</h2>
-            <p>Most issues come from extension reload state, restricted browser pages, command collisions, or editor-specific insertion behavior.</p>
-          </div>
-        </div>
-        <div class="grid">
-          <div class="card">
-            <h3>Helper does not open</h3>
-            <p>Check the configured trigger, refresh the page after reloading the extension, avoid <code>chrome://</code> pages, and confirm the current host is not disabled.</p>
-          </div>
-          <div class="card">
-            <h3>Prompt copies instead of inserts</h3>
-            <p>Some rich editors reject synthetic edits. PromptDeck falls back to clipboard and supports an insertion setting for direct, copy-only, or ask-every-time behavior.</p>
-          </div>
-          <div class="card">
-            <h3>Save reports a collision</h3>
-            <p>Commands and aliases must be unique across prompts. Choose a different command or remove the conflicting alias.</p>
-          </div>
-          <div class="card">
-            <h3>VS Code manager edits the wrong file</h3>
-            <p>Check the path displayed in the manager. By default it uses <code>~/.promptdeck/library.json</code>; override it with <code>promptdeck.libraryPath</code>, <code>PROMPTDECK_LIBRARY</code>, or <code>PROMPTDECK_HOME</code>.</p>
-          </div>
-        </div>
-        <p class="note" style="margin-top: 16px">
-          Data is tied to the current browser profile. Export JSON backups before clearing browser data, uninstalling the extension, or changing profiles.
-        </p>
-      </section>
-
-      <section id="more">
-        <div class="section-head">
-          <div>
-            <h2>More Project Docs</h2>
-            <p>The repository includes focused docs for contribution, privacy, security, release notes, and future work.</p>
-          </div>
-        </div>
-        <div class="grid">
-          <a class="card" href="CONTRIBUTING.md">
-            <h3>Contributing</h3>
-            <p>Setup, quality checks, code style, storage guidance, and pull request expectations.</p>
-          </a>
-          <a class="card" href="PRIVACY.md">
-            <h3>Privacy</h3>
-            <p>Data storage, local-first behavior, permissions, backups, and user caution.</p>
-          </a>
-          <a class="card" href="SECURITY.md">
-            <h3>Security</h3>
-            <p>Vulnerability reporting, sensitive areas, and current security posture.</p>
-          </a>
-          <a class="card" href="ROADMAP.md">
-            <h3>Roadmap</h3>
-            <p>Reliability, provider support, prompt management, import/export, accessibility, and testing notes.</p>
-          </a>
-          <a class="card" href="CHANGELOG.md">
-            <h3>Changelog</h3>
-            <p>Release preparation notes and notable changes.</p>
-          </a>
-          <a class="card" href="LICENSE">
-            <h3>License</h3>
-            <p>MIT license terms.</p>
-          </a>
         </div>
       </section>
     </main>
 
-    <footer class="footer">
-      <div class="footer-inner">PromptDeck documentation. Generated from the repository's current source, scripts, and policy files.</div>
+    <footer class="site-footer">
+      <div class="container">
+        <div class="footer-top">
+          <div class="footer-brand">
+            <a class="brand" href="#top"><img src="public/logo.png" alt="" /><span>PromptDeck</span></a>
+            <p>Local-first prompt infrastructure for the browser, terminal, VS Code, and desktop workflows.</p>
+          </div>
+          <div class="footer-group">
+            <strong>Product</strong>
+            <a href="#product">Capabilities</a><a href="#platform">Platform</a><a href="#security">Security</a>
+          </div>
+          <div class="footer-group">
+            <strong>Developers</strong>
+            <a href="#docs">Documentation</a><a href="CONTRIBUTING.md">Contributing</a><a href="ROADMAP.md">Roadmap</a>
+          </div>
+          <div class="footer-group">
+            <strong>Company</strong>
+            <a href="PRIVACY.md">Privacy</a><a href="SECURITY.md">Security policy</a><a href="LICENSE">MIT license</a>
+          </div>
+        </div>
+        <div class="footer-bottom">
+          <span>© 2026 PromptDeck. Open source under the MIT License.</span>
+          <span class="status"><i></i>Local-first · No hosted service required</span>
+        </div>
+      </div>
     </footer>
+
+    <script>
+      const menuButton = document.querySelector(".menu-button");
+      const navWrap = document.querySelector(".nav-wrap");
+
+      menuButton?.addEventListener("click", () => {
+        const open = navWrap.classList.toggle("open");
+        menuButton.setAttribute("aria-expanded", String(open));
+        menuButton.setAttribute("aria-label", open ? "Close navigation" : "Open navigation");
+      });
+
+      navWrap?.querySelectorAll("a").forEach((link) => {
+        link.addEventListener("click", () => {
+          navWrap.classList.remove("open");
+          menuButton?.setAttribute("aria-expanded", "false");
+          menuButton?.setAttribute("aria-label", "Open navigation");
+        });
+      });
+
+      document.querySelectorAll(".copy-button").forEach((button) => {
+        button.addEventListener("click", async () => {
+          const code = button.closest(".code-block")?.querySelector("code")?.textContent ?? "";
+          try {
+            await navigator.clipboard.writeText(code);
+            button.textContent = "Copied";
+            window.setTimeout(() => (button.textContent = "Copy"), 1500);
+          } catch {
+            button.textContent = "Select text";
+          }
+        });
+      });
+    </script>
   </body>
 </html>
