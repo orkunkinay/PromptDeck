@@ -43,11 +43,22 @@
     </label>
 
     <label>
+      Shadow DOM textarea
+      <div id="shadow-editor"></div>
+    </label>
+
+    <label>
       Fallback textarea
       <textarea id="fallback-input"></textarea>
     </label>
 
     <script>
+      const shadowEditor = document.getElementById("shadow-editor");
+      const shadowRoot = shadowEditor.attachShadow({ mode: "open" });
+      const shadowTextarea = document.createElement("textarea");
+      shadowTextarea.setAttribute("aria-label", "Shadow DOM prompt target");
+      shadowRoot.append(shadowTextarea);
+
       const fallback = document.getElementById("fallback-input");
 
       fallback.addEventListener("input", (event) => {

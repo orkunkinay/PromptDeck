@@ -20,8 +20,16 @@ export function isContentEditableElement(element: Element | null): element is HT
   return Boolean(element.isContentEditable || element.contentEditable === "true" || element.closest("[contenteditable='true']"));
 }
 
+function getDeepActiveElement(): Element | null {
+  let active = document.activeElement;
+  while (active instanceof HTMLElement && active.shadowRoot?.activeElement) {
+    active = active.shadowRoot.activeElement;
+  }
+  return active;
+}
+
 export function getActiveEditable(): EditableElement | null {
-  const active = document.activeElement;
+  const active = getDeepActiveElement();
   if (isTextInput(active)) return active;
   if (isContentEditableElement(active)) return (active.closest("[contenteditable='true']") as HTMLElement) || active;
   return null;

@@ -154,6 +154,29 @@ describe("PaletteController", () => {
     expect(root.querySelector(".pd-title")?.textContent).toBe("Summary Prompt");
   });
 
+  it("opens for an editable inside an open shadow root", async () => {
+    installChromeMock([prompt("paper", "Paper Prompt", "/paper")]);
+    controller = new PaletteController();
+    controller.start();
+    await flushPromises();
+
+    const editorHost = document.createElement("div");
+    const editorRoot = editorHost.attachShadow({ mode: "open" });
+    const textarea = document.createElement("textarea");
+    textarea.value = ";;paper";
+    editorRoot.append(textarea);
+    document.body.append(editorHost);
+    textarea.focus();
+    textarea.setSelectionRange(textarea.value.length, textarea.value.length);
+    textarea.dispatchEvent(new InputEvent("input", { bubbles: true, composed: true, inputType: "insertText", data: "paper" }));
+
+    const root = document.getElementById("promptdeck-root")?.shadowRoot?.querySelector(".pd-root") as HTMLDivElement;
+    expect(document.activeElement).toBe(editorHost);
+    expect(editorRoot.activeElement).toBe(textarea);
+    expect(root.hidden).toBe(false);
+    expect(root.querySelector(".pd-title")?.textContent).toBe("Paper Prompt");
+  });
+
   it("refreshes from storage changes instead of focusin", async () => {
     vi.useFakeTimers();
     const chromeMock = installChromeMock([prompt("paper", "Paper Prompt", "/paper")]);

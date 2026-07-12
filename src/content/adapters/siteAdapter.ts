@@ -1,4 +1,4 @@
-import { isContentEditableElement, isTextInput, type EditableElement } from "../insertion/editable";
+import { getActiveEditable, isContentEditableElement, isTextInput, type EditableElement } from "../insertion/editable";
 import type { InsertionRequest, InsertionResult } from "../insertion/insertionService";
 
 export interface EditorAdapter {
@@ -75,8 +75,7 @@ export function resolveEditorAdapter(adapters: EditorAdapter[], element: Editabl
 }
 
 export function canRunPromptDeck(): boolean {
-  const active = document.activeElement;
-  return isTextInput(active) || isContentEditableElement(active);
+  return Boolean(getActiveEditable());
 }
 
 export function getCurrentHost(): string {

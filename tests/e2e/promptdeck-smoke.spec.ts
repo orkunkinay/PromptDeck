@@ -128,6 +128,12 @@ test("Enter inserts the selected prompt into a contenteditable div", async ({ pa
   await expect(editor).not.toContainText(";;coding");
 });
 
+test("trigger detection works inside an open shadow root", async ({ page }) => {
+  await typeCommand(page, "#shadow-editor textarea", ";;blog");
+
+  await expect(page.locator("#promptdeck-root .pd-title")).toHaveText("Blog Evolution");
+});
+
 test("clipboard fallback path shows the copied message", async ({ page }) => {
   test.fail(true, "Palette state stores the fallback copy message, but src/content/index.ts does not render state.message yet.");
 
