@@ -12,6 +12,7 @@ import { defaultSettings } from "../shared/settings/defaultSettings";
 import { SETTINGS_KEY } from "../shared/settings/settingsService";
 import { createPromptFromCommand } from "../shared/storage/promptRepository";
 import { PROMPTDECK_STATE_KEY } from "../shared/state/stateInvalidation";
+import { nextBlankPromptCommand } from "../options/promptUtils";
 
 (globalThis as typeof globalThis & { IS_REACT_ACT_ENVIRONMENT: boolean }).IS_REACT_ACT_ENVIRONMENT = true;
 
@@ -243,6 +244,40 @@ describe("options manager", () => {
 
     expect(savedCommands).toEqual(["/new-prompt-2"]);
     expect(searchInput!.value).toBe("");
+    expect(container.textContent).toContain("New Prompt 2");
+  });
+
+  it("does not reuse the id of a renamed blank prompt when creating another prompt", async () => {
+    const renamedBlankPrompt = prompt("new-prompt", "Renamed Prompt", "/renamed");
+    expect(nextBlankPromptCommand([renamedBlankPrompt])).toBe("/new-prompt-2");
+
+    let prompts = [renamedBlankPrompt];
+    const savedCommands: string[] = [];
+    installChromeMock(
+      () => prompts,
+      () => defaultSettings,
+      (message) => {
+        if (message.type !== "PROMPTS_SAVE" || !message.prompt) return undefined;
+        savedCommands.push(message.prompt.command);
+        prompts = [message.prompt, ...prompts];
+        return { ok: true, data: message.prompt };
+      }
+    );
+    root = createRoot(container);
+
+    await act(async () => {
+      root?.render(<App />);
+      await flushPromises();
+    });
+
+    await act(async () => {
+      container.querySelector<HTMLButtonElement>("[aria-label='New prompt']")?.click();
+      await flushPromises();
+    });
+
+    expect(savedCommands).toEqual(["/new-prompt-2"]);
+    expect(prompts.map((item) => item.id)).toEqual(["new-prompt-2", "new-prompt"]);
+    expect(container.textContent).toContain("Renamed Prompt");
     expect(container.textContent).toContain("New Prompt 2");
   });
 });

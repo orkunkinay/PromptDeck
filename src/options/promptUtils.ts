@@ -1,5 +1,6 @@
 import type { Prompt, PromptDeckSettings } from "../shared/models/prompt";
 import { createBackup, stringifyBackup } from "../shared/backup";
+import { commandToId } from "../shared/utils/id";
 import { getDefaultVersion } from "../shared/versioning/versionService";
 
 export function currentContent(prompt: Prompt): string {
@@ -34,10 +35,19 @@ function commandExists(prompts: Prompt[], command: string): boolean {
   });
 }
 
+function promptIdExists(prompts: Prompt[], command: string): boolean {
+  const id = commandToId(command);
+  return prompts.some((prompt) => prompt.id === id);
+}
+
+function blankPromptCommandAvailable(prompts: Prompt[], command: string): boolean {
+  return !commandExists(prompts, command) && !promptIdExists(prompts, command);
+}
+
 export function nextBlankPromptCommand(prompts: Prompt[]): string {
-  if (!commandExists(prompts, "/new-prompt")) return "/new-prompt";
+  if (blankPromptCommandAvailable(prompts, "/new-prompt")) return "/new-prompt";
   let index = 2;
-  while (commandExists(prompts, `/new-prompt-${index}`)) {
+  while (!blankPromptCommandAvailable(prompts, `/new-prompt-${index}`)) {
     index += 1;
   }
   return `/new-prompt-${index}`;
