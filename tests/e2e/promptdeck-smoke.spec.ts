@@ -134,9 +134,31 @@ test("trigger detection works inside an open shadow root", async ({ page }) => {
   await expect(page.locator("#promptdeck-root .pd-title")).toHaveText("Blog Evolution");
 });
 
-test("clipboard fallback path shows the copied message", async ({ page }) => {
-  test.fail(true, "Palette state stores the fallback copy message, but src/content/index.ts does not render state.message yet.");
+test("opaque editors trigger globally and fall back to a visible clipboard message", async ({ page }) => {
+  const editor = page.locator("#closed-shadow-editor");
+  await editor.click();
+  await page.keyboard.type(";;blog");
 
+  await expect(page.locator("#promptdeck-root .pd-title")).toHaveText("Blog Evolution");
+  await page.keyboard.press("Enter");
+
+  await expect(page.locator("#promptdeck-root .pd-title")).toContainText(/Copied.+press/);
+  await expect.poll(() => editor.evaluate((element) => (element as HTMLElement & { value: string }).value)).toBe(";;blog");
+  await expect.poll(() => page.evaluate(() => navigator.clipboard.readText())).toContain("Use these notes to evolve a blog post");
+  await page.waitForTimeout(250);
+  await expect(page.locator("#promptdeck-root .pd-title")).toContainText(/Copied.+press/);
+});
+
+test("trigger detection works inside embedded editors", async ({ page }) => {
+  const frame = page.frameLocator("#frame-editor");
+  const input = frame.locator("#frame-input");
+  await input.click();
+  await page.keyboard.type(";;blog");
+
+  await expect(frame.locator("#promptdeck-root .pd-title")).toHaveText("Blog Evolution");
+});
+
+test("clipboard fallback path shows the copied message", async ({ page }) => {
   const fallback = page.locator("#fallback-input");
   await typeCommand(page, "#fallback-input", ";;blog");
   await fallback.evaluate((element) => {

@@ -18,7 +18,9 @@
       }
 
       textarea,
-      [contenteditable="true"] {
+      [contenteditable="true"],
+      closed-shadow-editor,
+      iframe {
         display: block;
         width: min(720px, calc(100vw - 48px));
         min-height: 132px;
@@ -48,6 +50,16 @@
     </label>
 
     <label>
+      Closed shadow DOM textarea
+      <closed-shadow-editor id="closed-shadow-editor" tabindex="0"></closed-shadow-editor>
+    </label>
+
+    <label>
+      Embedded editor
+      <iframe id="frame-editor" srcdoc="<!doctype html><html><body><textarea id='frame-input' aria-label='Embedded prompt target'></textarea></body></html>"></iframe>
+    </label>
+
+    <label>
       Fallback textarea
       <textarea id="fallback-input"></textarea>
     </label>
@@ -58,6 +70,25 @@
       const shadowTextarea = document.createElement("textarea");
       shadowTextarea.setAttribute("aria-label", "Shadow DOM prompt target");
       shadowRoot.append(shadowTextarea);
+
+      class ClosedShadowEditor extends HTMLElement {
+        #textarea;
+
+        constructor() {
+          super();
+          const root = this.attachShadow({ mode: "closed", delegatesFocus: true });
+          this.#textarea = document.createElement("textarea");
+          this.#textarea.setAttribute("aria-label", "Closed shadow DOM prompt target");
+          root.append(this.#textarea);
+          this.addEventListener("click", () => this.#textarea.focus());
+        }
+
+        get value() {
+          return this.#textarea.value;
+        }
+      }
+
+      customElements.define("closed-shadow-editor", ClosedShadowEditor);
 
       const fallback = document.getElementById("fallback-input");
 

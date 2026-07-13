@@ -5,8 +5,9 @@ import { SETTINGS_KEY } from "../shared/settings/settingsService";
 import { defaultSettings } from "../shared/settings/defaultSettings";
 import { PROMPTDECK_STATE_KEY } from "../shared/state/stateInvalidation";
 import { resolvePromptContent } from "../shared/versioning/versionService";
-import { canRunPromptDeck, getCurrentHost, isHostDisabled } from "./adapters/siteAdapter";
+import { getCurrentHost, isHostDisabled } from "./adapters/siteAdapter";
 import { parseCommandAt, type ParsedCommand } from "./commandDetection/commandParser";
+import { InputTextTracker } from "./commandDetection/inputTextTracker";
 import { caretRect, getActiveEditable, getEditableSnapshot, type EditableElement } from "./insertion/editable";
 import { insertOrCopy } from "./insertion/insertionService";
 import { consumePromptDeckKeyboardEvent, isPromptDeckOwnedKey } from "./keyboard/keyboardOwnership";
@@ -59,6 +60,8 @@ export class PaletteController {
   private refreshPromise: Promise<void> | null = null;
   private settings: PromptDeckSettings = defaultSettings;
   private activeEditable: EditableElement | null = null;
+  private opaqueInputTarget: Element | null = null;
+  private readonly opaqueInputText = new InputTextTracker();
   private refreshTimer: number | undefined;
   private state: State = { open: false, command: null, results: [], selectedIndex: 0, expanded: false, askPending: false };
 
@@ -164,12 +167,14 @@ export class PaletteController {
     this.setState({
       results,
       selectedIndex: Math.min(this.state.selectedIndex, Math.max(0, results.length - 1)),
-      message: undefined,
       error: undefined
     });
   }
 
-  private onInput = (): void => this.updateFromCaret();
+  private onInput = (event: Event): void => {
+    if (this.updateFromCaret()) return;
+    if (event instanceof InputEvent) this.updateFromOpaqueInput(event);
+  };
 
   private onFocusOut = (): void => {
     window.setTimeout(() => {
@@ -177,15 +182,21 @@ export class PaletteController {
       const active = document.activeElement;
       if (active && this.host.contains(active)) return;
       if (getActiveEditable()) return;
+      if (
+        this.opaqueInputTarget &&
+        (active === this.opaqueInputTarget || (active instanceof Element && active.contains(this.opaqueInputTarget)))
+      )
+        return;
+      this.resetOpaqueInput();
       this.dismiss();
     }, 120);
   };
 
   private onMouseDown = (event: MouseEvent): void => {
-    if (!this.state.open) return;
     const target = event.target;
     if (target instanceof Node && this.host.contains(target)) return;
-    this.dismiss();
+    this.resetOpaqueInput();
+    if (this.state.open) this.dismiss();
   };
 
   private onKeyup = (event: KeyboardEvent): void => {
@@ -202,6 +213,7 @@ export class PaletteController {
     if (event.isComposing) return;
     if (event.key === "Escape") {
       consumePromptDeckKeyboardEvent(event);
+      this.resetOpaqueInput();
       this.dismiss();
     } else if ((event.metaKey || event.ctrlKey) && event.key === "ArrowDown") {
       consumePromptDeckKeyboardEvent(event);
@@ -226,30 +238,57 @@ export class PaletteController {
     }
   };
 
-  private updateFromCaret(): void {
-    if (isHostDisabled(getCurrentHost(), this.settings.disabledHosts)) return;
+  private updateFromCaret(): boolean {
+    if (isHostDisabled(getCurrentHost(), this.settings.disabledHosts)) return false;
     const editable = getActiveEditable();
-    if (!editable || !canRunPromptDeck()) return;
+    if (!editable) return false;
     const snapshot = getEditableSnapshot(editable);
-    if (!snapshot) return;
+    if (!snapshot) return false;
+    this.resetOpaqueInput();
     const command = parseCommandAt(snapshot.text, snapshot.selectionStart, this.settings.trigger);
+    if (!command) {
+      if (this.state.open) this.dismiss();
+      return true;
+    }
+    this.activeEditable = editable;
+    if (!this.promptsLoaded) void this.refreshData();
+    this.openForCommand(command, caretRect(editable));
+    return true;
+  }
+
+  private updateFromOpaqueInput(event: InputEvent): void {
+    if (isHostDisabled(getCurrentHost(), this.settings.disabledHosts)) return;
+    const text = this.opaqueInputText.update(event);
+    const command = parseCommandAt(text, text.length, this.settings.trigger);
     if (!command) {
       if (this.state.open) this.dismiss();
       return;
     }
-    this.activeEditable = editable;
+
+    this.activeEditable = null;
+    this.opaqueInputTarget = event.target instanceof Element ? event.target : document.activeElement;
     if (!this.promptsLoaded) void this.refreshData();
+    const anchor = this.opaqueInputTarget instanceof Element ? this.opaqueInputTarget.getBoundingClientRect() : undefined;
+    this.openForCommand(command, anchor);
+  }
+
+  private openForCommand(command: ParsedCommand, rect?: DOMRect): void {
     this.setState({
       open: true,
       command,
       results: searchPrompts(this.prompts, command.query, location.hostname),
       selectedIndex: 0,
-      rect: caretRect(editable),
+      rect,
       expanded: false,
       askPending: false,
       message: undefined,
       error: undefined
     });
+  }
+
+  private resetOpaqueInput(): void {
+    this.opaqueInputTarget = null;
+    this.opaqueInputText.reset();
   }
 
   private nextIndex(direction: 1 | -1): number {
@@ -262,6 +301,7 @@ export class PaletteController {
   }
 
   private async insertSelected(options: { copy?: boolean; preserveCommand?: boolean; askChoice?: "direct" | "clipboard" } = {}): Promise<void> {
+    if (!this.promptsLoaded) await this.refreshData();
     const selected = this.state.results[this.state.selectedIndex]?.prompt;
     if (!selected || !this.state.command) return;
     const askChoice = this.settings.insertionMode === "ask" && this.state.askPending && !options.copy && !options.askChoice ? "direct" : options.askChoice;
@@ -282,9 +322,11 @@ export class PaletteController {
     );
     await sendRuntimeMessage<void>({ type: "PROMPTS_RECORD_USAGE", id: selected.id, host: location.hostname });
     if (result.mode === "direct" || explicitClipboard) {
+      this.resetOpaqueInput();
       this.dismiss();
       return;
     }
+    this.resetOpaqueInput();
     this.setState({ message: result.message, open: true, askPending: false });
   }
 
@@ -423,21 +465,23 @@ export class PaletteController {
     root.style.left = `${Math.max(12, Math.min(window.innerWidth - 520, this.state.rect?.left || 20))}px`;
 
     const selected = this.state.results[this.state.selectedIndex]?.prompt;
-    title.textContent = selected?.title || (this.state.command?.raw ? "No matching prompt" : `Type ${this.settings.trigger}`);
-    hint.hidden = this.state.askPending;
+    title.textContent = this.state.message || selected?.title || (this.state.command?.raw ? "No matching prompt" : `Type ${this.settings.trigger}`);
+    hint.hidden = this.state.askPending || Boolean(this.state.message);
     hint.textContent =
       this.settings.insertionMode === "ask"
         ? "Enter choose"
         : this.settings.insertionMode === "clipboard"
           ? "Enter copy"
           : "Enter insert";
-    ask.hidden = !this.state.askPending;
+    ask.hidden = !this.state.askPending || Boolean(this.state.message);
     count.textContent =
-      this.state.results.length > 1
-        ? `${this.state.selectedIndex + 1}/${this.state.results.length} Up/Down`
-        : this.state.results.length === 1
-          ? "1/1"
-          : "0/0";
+      this.state.message
+        ? ""
+        : this.state.results.length > 1
+          ? `${this.state.selectedIndex + 1}/${this.state.results.length} Up/Down`
+          : this.state.results.length === 1
+            ? "1/1"
+            : "0/0";
 
     const showMenu = this.state.expanded && this.state.results.length > 1;
     menu.hidden = !showMenu;
