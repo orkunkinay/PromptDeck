@@ -128,6 +128,33 @@ test("Enter inserts the selected prompt into a contenteditable div", async ({ pa
   await expect(editor).not.toContainText(";;coding");
 });
 
+test("trigger detection works after multi-paragraph content in a contenteditable", async ({ page }) => {
+  const editor = page.locator("#multiblock-editor");
+  await editor.click();
+  // Place the caret at the very end of the pre-filled multi-block content so
+  // the trigger sits behind the block-boundary newlines that innerText adds
+  // but Range.toString() omits.
+  await page.evaluate(() => {
+    const element = document.getElementById("multiblock-editor");
+    if (!element) return;
+    element.focus();
+    const range = document.createRange();
+    range.selectNodeContents(element);
+    range.collapse(false);
+    const selection = window.getSelection();
+    selection?.removeAllRanges();
+    selection?.addRange(range);
+  });
+  await page.keyboard.type(";;blog");
+
+  await expect(palette(page)).toBeVisible();
+  // The full "blog" query must survive the block-boundary offset. Without the
+  // fix the caret offset lands short, the query is truncated, and the palette
+  // either stays closed or shows unrelated recency results instead of 1/1.
+  await expect(page.locator("#promptdeck-root .pd-title")).toHaveText("Blog Evolution");
+  await expect(page.locator("#promptdeck-root .pd-count")).toHaveText("1/1");
+});
+
 test("trigger detection works inside an open shadow root", async ({ page }) => {
   await typeCommand(page, "#shadow-editor textarea", ";;blog");
 
