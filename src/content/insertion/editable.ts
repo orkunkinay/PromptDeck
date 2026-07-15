@@ -47,21 +47,33 @@ export function getEditableSnapshot(element: EditableElement): EditableSnapshot 
 
   const selection = document.getSelection();
   if (!selection || selection.rangeCount === 0) {
-    const text = element.innerText || element.textContent || "";
+    const text = element.textContent || "";
     return { text, selectionStart: text.length, selectionEnd: text.length, element };
   }
 
   const range = selection.getRangeAt(0);
   if (!element.contains(range.startContainer)) return null;
 
+  // Derive both the text and the caret offset from the same Range machinery.
+  // Reading the text from element.innerText while measuring the offset with
+  // Range.toString() mixes two different length spaces: innerText inserts
+  // newlines at block boundaries that Range.toString() omits. In multi-block
+  // editors (ProseMirror, Lexical, Draft.js — ChatGPT, Claude, Gemini) the
+  // caret offset then lands short of the real text, so slicing text up to the
+  // caret cuts off the trigger and it is never detected.
+  const full = range.cloneRange();
+  full.selectNodeContents(element);
+  const text = full.toString();
+
   const before = range.cloneRange();
   before.selectNodeContents(element);
   before.setEnd(range.startContainer, range.startOffset);
+  const selectionStart = before.toString().length;
   const selected = range.cloneContents().textContent || "";
   return {
-    text: element.innerText || element.textContent || "",
-    selectionStart: before.toString().length,
-    selectionEnd: before.toString().length + selected.length,
+    text,
+    selectionStart,
+    selectionEnd: selectionStart + selected.length,
     element
   };
 }
