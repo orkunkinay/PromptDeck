@@ -1,4 +1,5 @@
 import { getActiveEditable, isTextInput, type EditableElement } from "./editable";
+import { domPointForOffset, serializeEditable } from "./serialize";
 import { createEditorAdapters, resolveEditorAdapter } from "../adapters/siteAdapter";
 
 export interface InsertionRequest {
@@ -61,46 +62,11 @@ function moveSelectionAfter(node: Node, selection: Selection | null): void {
   selection.addRange(range);
 }
 
-function isElementLineBreak(node: Node): boolean {
-  return node instanceof HTMLBRElement;
-}
-
-function textLengthForNode(node: Node): number {
-  if (node.nodeType === Node.TEXT_NODE) return node.textContent?.length ?? 0;
-  if (isElementLineBreak(node)) return 1;
-  return 0;
-}
-
-function boundaryForTextOffset(root: HTMLElement, offset: number): { node: Node; offset: number } | null {
-  const walker = document.createTreeWalker(root, NodeFilter.SHOW_TEXT | NodeFilter.SHOW_ELEMENT);
-  let currentOffset = 0;
-  let lastTextNode: Text | null = null;
-
-  while (walker.nextNode()) {
-    const node = walker.currentNode;
-    if (node instanceof Text) {
-      const length = textLengthForNode(node);
-      if (offset <= currentOffset + length) {
-        return { node, offset: Math.max(0, offset - currentOffset) };
-      }
-      currentOffset += length;
-      lastTextNode = node;
-    } else if (isElementLineBreak(node)) {
-      if (offset <= currentOffset) return { node: node.parentNode ?? root, offset: 0 };
-      currentOffset += 1;
-    }
-  }
-
-  if (lastTextNode) return { node: lastTextNode, offset: lastTextNode.textContent?.length ?? 0 };
-  return { node: root, offset: root.childNodes.length };
-}
-
 function selectTextOffsets(element: HTMLElement, start: number, end: number): boolean {
   const selection = document.getSelection();
   if (!selection) return false;
-  const startBoundary = boundaryForTextOffset(element, start);
-  const endBoundary = boundaryForTextOffset(element, end);
-  if (!startBoundary || !endBoundary) return false;
+  const startBoundary = domPointForOffset(element, start);
+  const endBoundary = domPointForOffset(element, end);
 
   const range = document.createRange();
   range.setStart(startBoundary.node, startBoundary.offset);
@@ -111,15 +77,9 @@ function selectTextOffsets(element: HTMLElement, start: number, end: number): bo
 }
 
 function readEditableText(element: HTMLElement): string {
-  if (typeof element.innerText === "string") return element.innerText;
-  const readNode = (node: Node): string => {
-    if (node.nodeType === Node.TEXT_NODE) return node.textContent ?? "";
-    if (node instanceof HTMLBRElement) return "\n";
-    return Array.from(node.childNodes)
-      .map((child) => readNode(child))
-      .join("");
-  };
-  return readNode(element);
+  // Same deterministic serialization the trigger detector uses, so the
+  // replaceRange offsets it produced map to the range removed here.
+  return serializeEditable(element).text;
 }
 
 function readElementText(element: EditableElement): string {

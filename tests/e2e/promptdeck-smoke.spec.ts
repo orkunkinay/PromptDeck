@@ -155,6 +155,40 @@ test("trigger detection works after multi-paragraph content in a contenteditable
   await expect(page.locator("#promptdeck-root .pd-count")).toHaveText("1/1");
 });
 
+test("trigger detection works at the start of a new block after existing content", async ({ page }) => {
+  const editor = page.locator("#newblock-editor");
+  await editor.click();
+  // Put the caret at the end of the first paragraph, then start a fresh block
+  // and type the trigger. The character before ;; is now the newline between
+  // the two blocks. Range.toString() drops that newline, so the old code saw
+  // the previous paragraph's last letter, failed the plausible-start check, and
+  // never opened the palette.
+  await page.evaluate(() => {
+    const element = document.getElementById("newblock-editor");
+    if (!element) return;
+    element.focus();
+    const range = document.createRange();
+    range.selectNodeContents(element);
+    range.collapse(false);
+    const selection = window.getSelection();
+    selection?.removeAllRanges();
+    selection?.addRange(range);
+  });
+  await page.keyboard.press("Enter");
+  await page.keyboard.type(";;blog");
+
+  await expect(palette(page)).toBeVisible();
+  await expect(page.locator("#promptdeck-root .pd-title")).toHaveText("Blog Evolution");
+  await expect(page.locator("#promptdeck-root .pd-count")).toHaveText("1/1");
+
+  await page.keyboard.press("Enter");
+  // The inserted prompt replaces only ;;blog; the first paragraph survives and
+  // the trigger text is gone.
+  await expect(editor).toContainText("Please write the following");
+  await expect(editor).toContainText("Use these notes to evolve a blog post");
+  await expect(editor).not.toContainText(";;blog");
+});
+
 test("trigger detection works inside an open shadow root", async ({ page }) => {
   await typeCommand(page, "#shadow-editor textarea", ";;blog");
 
