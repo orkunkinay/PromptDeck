@@ -101,6 +101,7 @@ test("trigger detection opens the palette", async ({ page }) => {
 
   await expect(page.locator("#promptdeck-root .pd-title")).toBeVisible();
   await expect(page.locator("#promptdeck-root .pd-count")).toContainText("1/5");
+  await expect(palette(page)).toBeInViewport();
 });
 
 test("search narrows results", async ({ page }) => {

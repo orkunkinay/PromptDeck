@@ -13,7 +13,7 @@ import { insertOrCopy } from "./insertion/insertionService";
 import { consumePromptDeckKeyboardEvent, isPromptDeckOwnedKey } from "./keyboard/keyboardOwnership";
 
 const PALETTE_CSS = `
-:host{all:initial;display:block;width:0;height:0;margin:0;padding:0;border:0;background:transparent;color:initial;font:initial;contain:layout style}
+:host{all:initial;display:block;width:0;height:0;margin:0;padding:0;border:0;background:transparent;color:initial;font:initial;contain:style}
 .pd-root,.pd-root *{box-sizing:border-box}
 .pd-root{all:initial;position:fixed;z-index:2147483647;width:max-content;max-width:min(520px,calc(100vw - 24px));font-family:Inter,ui-sans-serif,system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;font-size:13px;letter-spacing:0;color:#111827}
 .pd-pill{display:flex;align-items:center;gap:8px;max-width:min(520px,calc(100vw - 24px));border:1px solid rgba(148,163,184,.55);border-radius:999px;background:#fff;padding:6px 8px;box-shadow:0 12px 36px rgba(15,23,42,.22)}
@@ -78,7 +78,7 @@ export class PaletteController {
     this.host.style.background = "transparent";
     this.host.style.color = "initial";
     this.host.style.font = "initial";
-    this.host.style.contain = "layout style";
+    this.host.style.contain = "style";
     this.shadow = this.host.attachShadow({ mode: "open" });
     const style = document.createElement("style");
     style.textContent = PALETTE_CSS;
