@@ -1,3 +1,5 @@
+import { serializeEditable } from "./serialize";
+
 export type EditableElement = HTMLTextAreaElement | HTMLInputElement | HTMLElement;
 
 export interface EditableSnapshot {
@@ -47,33 +49,31 @@ export function getEditableSnapshot(element: EditableElement): EditableSnapshot 
 
   const selection = document.getSelection();
   if (!selection || selection.rangeCount === 0) {
-    const text = element.textContent || "";
+    const { text } = serializeEditable(element);
     return { text, selectionStart: text.length, selectionEnd: text.length, element };
   }
 
   const range = selection.getRangeAt(0);
   if (!element.contains(range.startContainer)) return null;
 
-  // Derive both the text and the caret offset from the same Range machinery.
-  // Reading the text from element.innerText while measuring the offset with
-  // Range.toString() mixes two different length spaces: innerText inserts
-  // newlines at block boundaries that Range.toString() omits. In multi-block
-  // editors (ProseMirror, Lexical, Draft.js — ChatGPT, Claude, Gemini) the
-  // caret offset then lands short of the real text, so slicing text up to the
-  // caret cuts off the trigger and it is never detected.
-  const full = range.cloneRange();
-  full.selectNodeContents(element);
-  const text = full.toString();
-
-  const before = range.cloneRange();
-  before.selectNodeContents(element);
-  before.setEnd(range.startContainer, range.startOffset);
-  const selectionStart = before.toString().length;
-  const selected = range.cloneContents().textContent || "";
+  // Derive the text and the caret offset from one deterministic walk so they
+  // share a length space, and so block boundaries appear as real newlines.
+  // Range.toString() omits the newlines between block elements, so a trigger
+  // typed at the start of a new paragraph looks glued to the previous
+  // paragraph's last character and fails the plausible-start check. innerText
+  // inserts block newlines but its CSS-dependent spacing never lines up with a
+  // Range caret offset. serializeEditable gives both from the same rules, so
+  // multi-block editors (ProseMirror, Lexical, Draft.js — ChatGPT, Claude,
+  // Gemini) detect triggers at line and block starts.
+  const start = serializeEditable(element, { node: range.startContainer, offset: range.startOffset });
+  const selectionStart = start.offset ?? start.text.length;
+  const selectionEnd = range.collapsed
+    ? selectionStart
+    : serializeEditable(element, { node: range.endContainer, offset: range.endOffset }).offset ?? selectionStart;
   return {
-    text,
+    text: start.text,
     selectionStart,
-    selectionEnd: selectionStart + selected.length,
+    selectionEnd,
     element
   };
 }
