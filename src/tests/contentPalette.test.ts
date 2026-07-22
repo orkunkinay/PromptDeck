@@ -228,6 +228,51 @@ describe("PaletteController", () => {
     expect(document.activeElement).toBe(textarea);
   });
 
+  it("dismisses when focus moves to another editable", async () => {
+    installChromeMock([prompt("paper", "Paper Prompt", "/paper")]);
+    controller = new PaletteController();
+    controller.start();
+    await flushPromises();
+
+    openPalette(";;p");
+    const root = document.getElementById("promptdeck-root")?.shadowRoot?.querySelector(".pd-root") as HTMLDivElement;
+    const otherTextarea = document.createElement("textarea");
+    document.body.append(otherTextarea);
+
+    otherTextarea.focus();
+    await new Promise((resolve) => window.setTimeout(resolve));
+
+    expect(root.hidden).toBe(true);
+  });
+
+  it("dismisses when clicking outside the palette", async () => {
+    installChromeMock([prompt("paper", "Paper Prompt", "/paper")]);
+    controller = new PaletteController();
+    controller.start();
+    await flushPromises();
+
+    openPalette(";;p");
+    const root = document.getElementById("promptdeck-root")?.shadowRoot?.querySelector(".pd-root") as HTMLDivElement;
+    document.body.dispatchEvent(new MouseEvent("mousedown", { bubbles: true }));
+
+    expect(root.hidden).toBe(true);
+  });
+
+  it("dismisses when the command is cleared", async () => {
+    installChromeMock([prompt("paper", "Paper Prompt", "/paper")]);
+    controller = new PaletteController();
+    controller.start();
+    await flushPromises();
+
+    const textarea = openPalette(";;p");
+    const root = document.getElementById("promptdeck-root")?.shadowRoot?.querySelector(".pd-root") as HTMLDivElement;
+    textarea.value = "";
+    textarea.setSelectionRange(0, 0);
+    textarea.dispatchEvent(new InputEvent("input", { bubbles: true, inputType: "deleteContentBackward" }));
+
+    expect(root.hidden).toBe(true);
+  });
+
   it("exposes palette listbox, option, ask-control, and reduced-motion attributes", async () => {
     installChromeMock([prompt("paper", "Paper Prompt", "/paper"), prompt("plan", "Plan Prompt", "/plan")], {
       ...defaultSettings,
