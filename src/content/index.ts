@@ -181,7 +181,7 @@ export class PaletteController {
       if (!this.state.open) return;
       const active = document.activeElement;
       if (active && this.host.contains(active)) return;
-      if (getActiveEditable()) return;
+      if (getActiveEditable() === this.activeEditable) return;
       if (
         this.opaqueInputTarget &&
         (active === this.opaqueInputTarget || (active instanceof Element && active.contains(this.opaqueInputTarget)))
@@ -189,7 +189,7 @@ export class PaletteController {
         return;
       this.resetOpaqueInput();
       this.dismiss();
-    }, 120);
+    }, 0);
   };
 
   private onMouseDown = (event: MouseEvent): void => {
