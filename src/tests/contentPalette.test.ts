@@ -258,6 +258,33 @@ describe("PaletteController", () => {
     expect(root.hidden).toBe(true);
   });
 
+  it("dismisses when focus leaves an opaque editor", async () => {
+    installChromeMock([prompt("paper", "Paper Prompt", "/paper")]);
+    controller = new PaletteController();
+    controller.start();
+    await flushPromises();
+
+    // Opaque editors (closed shadow roots, custom editing surfaces) are not
+    // reported by getActiveEditable, so the palette opens from tracked input
+    // events with activeEditable left null.
+    const opaqueEditor = document.createElement("div");
+    opaqueEditor.tabIndex = 0;
+    document.body.append(opaqueEditor);
+    opaqueEditor.focus();
+    opaqueEditor.dispatchEvent(new InputEvent("input", { bubbles: true, inputType: "insertText", data: ";" }));
+    opaqueEditor.dispatchEvent(new InputEvent("input", { bubbles: true, inputType: "insertText", data: ";" }));
+    const root = document.getElementById("promptdeck-root")?.shadowRoot?.querySelector(".pd-root") as HTMLDivElement;
+    expect(root.hidden).toBe(false);
+
+    const button = document.createElement("button");
+    document.body.append(button);
+    button.focus();
+    opaqueEditor.dispatchEvent(new FocusEvent("focusout", { bubbles: true }));
+    await new Promise((resolve) => window.setTimeout(resolve));
+
+    expect(root.hidden).toBe(true);
+  });
+
   it("dismisses when the command is cleared", async () => {
     installChromeMock([prompt("paper", "Paper Prompt", "/paper")]);
     controller = new PaletteController();
