@@ -111,6 +111,24 @@ test("search narrows results", async ({ page }) => {
   await expect(page.locator("#promptdeck-root .pd-count")).toHaveText("1/1");
 });
 
+test("clearing a command dismisses the palette", async ({ page }) => {
+  const input = page.locator("#prompt-input");
+  await typeCommand(page, "#prompt-input", ";;blog");
+
+  await input.press("Meta+A");
+  await page.keyboard.press("Backspace");
+
+  await expect(palette(page)).toBeHidden();
+});
+
+test("clicking outside the palette dismisses it", async ({ page }) => {
+  await typeCommand(page, "#prompt-input", ";;blog");
+
+  await page.locator("#rich-editor").click();
+
+  await expect(palette(page)).toBeHidden();
+});
+
 test("Enter inserts the selected prompt into a textarea", async ({ page }) => {
   const input = page.locator("#prompt-input");
   await typeCommand(page, "#prompt-input", ";;blog");
